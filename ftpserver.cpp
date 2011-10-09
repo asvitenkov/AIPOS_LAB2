@@ -8,6 +8,6 @@ FTPServer::FTPServer(QObject *parent): QTcpServer(parent)
 
 void FTPServer::incomingConnection(int socketID){
     FTPSession *session = new FTPSession(this);
-    //QTcpSocket *tmp = new QTcpSocket(this);
     session->setSocketDescriptor(socketID);
+    session->write(QByteArray(QString("200 SveT FTP Service\r\n").toUtf8()));
 }

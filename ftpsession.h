@@ -19,6 +19,12 @@ private slots:
 private:
     bool loginIsOk;
     bool passIsOk;
+    bool isAnonymous;
+    QString userName;
+    QString userPassword;
+    void parsingQuery(QString);
+    void sendToClient(QString);
+
 
 };
 
