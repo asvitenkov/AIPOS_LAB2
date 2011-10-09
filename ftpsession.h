@@ -26,6 +26,8 @@ private:
     void sendToClient(QString);
     bool checkUserName(QString);
     bool checkUserPassword(QString);
+    QString getUserWorkDir(QString);
+    QString type;
 
 
 };
