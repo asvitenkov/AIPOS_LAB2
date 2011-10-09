@@ -24,6 +24,8 @@ private:
     QString userPassword;
     void parsingQuery(QString);
     void sendToClient(QString);
+    bool checkUserName(QString);
+    bool checkUserPassword(QString);
 
 
 };
