@@ -1,11 +1,13 @@
 #include "ftpsession.h"
 #include <QDebug>
+#include <QHostAddress>
 
 
 FTPSession::FTPSession(QObject *parent):QTcpSocket(parent)
 {
     connect(this,SIGNAL(readyRead()),this,SLOT(readClient()));
-
+    passIsOk = false;
+    loginIsOk = false;
 }
 
 

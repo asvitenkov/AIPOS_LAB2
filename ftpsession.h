@@ -16,6 +16,10 @@ public:
 private slots:
     void readClient();
 
+private:
+    bool loginIsOk;
+    bool passIsOk;
+
 };
 
 #endif // FTPSESSION_H
