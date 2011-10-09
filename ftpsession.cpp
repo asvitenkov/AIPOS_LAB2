@@ -3,6 +3,7 @@
 #include <QHostAddress>
 #include <QStringList>
 #include <QSysInfo>
+#include <QRegExp>
 
 
 FTPSession::FTPSession(QObject *parent):QTcpSocket(parent)
@@ -12,6 +13,10 @@ FTPSession::FTPSession(QObject *parent):QTcpSocket(parent)
     loginIsOk = false;
     isAnonymous = false;
     type = "I";
+    passiveMode = false;
+    pasvPort.push_back(0);
+    pasvPort.push_back(0);
+    setCurrentDirectory("D:\\");
 
 }
 
@@ -27,6 +32,7 @@ void FTPSession::parsingQuery(QString query){
     query = query.replace("\r\n","");
     QStringList list = query.split(" ");
     bool cmdIsUnderstoot = false;
+    // но есть команды которые могут содержать аргументы а могут их и не содержать
     if(list.size()==1){
         //qDebug()<<list[0];
         //запрос без агрумента
@@ -43,6 +49,15 @@ void FTPSession::parsingQuery(QString query){
         if(list[0]=="PWD"){
             cmdIsUnderstoot = true;
             sendToClient("257 " + QString("\"\\")+getUserWorkDir(userName)+"\" is a current directory");
+        }
+        if(list[0]=="PASV"){
+            cmdIsUnderstoot = true;
+            passiveMode =true;
+            // нужно отослать адрес и порт
+            pasvPort[0]=qrand()%255+1;
+            pasvPort[1]=qrand()%255;
+            sendToClient("227 Entering Passive mode ("+peerAddress().toString().replace(".",",")+
+                         ","+QString::number(pasvPort[0])+","+QString::number(pasvPort[1])+")");
         }
         if(!cmdIsUnderstoot) sendToClient("500 Command is not recognized");
     }
@@ -85,6 +100,22 @@ void FTPSession::parsingQuery(QString query){
         }
         if(list[0]=="TYPE"){
             cmdIsUnderstoot = true;
+            if(list[1]=="A" || list[1]=="I") type = list[1];
+            sendToClient("200 Type set to "+type);
+        }
+        if(list[0]=="PORT"){
+            cmdIsUnderstoot = true;
+            QRegExp texp("[0-9]{1,3}\\,[0-9]{1,3}\\,[0-9]{1,3}\\,[0-9]{1,3}\\,[0-9]{1,3}\\,[0-9]{1,3}");
+            if((list[1]).contains(texp)){
+                // корректный аргумент
+                QList<int> lst;
+                QStringList listAdress = (list[1]).split(",");
+                for(int i=0; i<listAdress.size();i++) lst.push_back((listAdress[i].toInt()));
+            }
+            else{
+                // некорректный аргумент
+                sendToClient("501 Error in parameters or arguments");
+            }
         }
         if(!cmdIsUnderstoot) sendToClient("500 Command is not recognized");
     }
@@ -127,4 +158,12 @@ bool FTPSession::checkUserPassword(QString pass){
 
 QString FTPSession::getUserWorkDir(QString user){
     return userName+"_work_directory";
+}
+
+
+bool FTPSession::setCurrentDirectory(QString dirName){
+    currentDirectory.setPath(dirName);
+    if(currentDirectory.isReadable())
+        return true;
+    else return false;
 }

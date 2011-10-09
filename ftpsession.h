@@ -5,6 +5,8 @@
 #include <QDataStream>
 #include <QByteArray>
 #include <QString>
+#include <QList>
+#include <QDir>
 
 class FTPSession : public QTcpSocket
 {
@@ -27,7 +29,11 @@ private:
     bool checkUserName(QString);
     bool checkUserPassword(QString);
     QString getUserWorkDir(QString);
+    bool passiveMode;
     QString type;
+    QList<int> pasvPort;
+    QDir currentDirectory;
+    bool setCurrentDirectory(QString);
 
 
 };
