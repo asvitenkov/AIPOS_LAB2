@@ -19,8 +19,6 @@ FTPSession::FTPSession(QObject *parent):QTcpSocket(parent)
     activMode = false;
     pasvPort.push_back(0);
     pasvPort.push_back(0);
-//    activPort.push_back(0);
-//    activPort.push_back(0);
     setCurrentDirectory("D:\\");
     currentDirectory.setFilter(QDir::Dirs | QDir::Files );
 
@@ -100,16 +98,16 @@ void FTPSession::parsingQuery(QString query){
         return;
     }
 
-    if(list[0]=="PASV"){
-        cmdIsUnderstoot = true;
-        passiveMode =true;
-        // нужно отослать адрес и порт
-        pasvPort[0]=qrand()%255+1;
-        pasvPort[1]=qrand()%255;
-        sendToClient("227 Entering Passive mode ("+peerAddress().toString().replace(".",",")+
-                     ","+QString::number(pasvPort[0])+","+QString::number(pasvPort[1])+")");
-        return;
-    }
+//    if(list[0]=="PASV"){
+//        cmdIsUnderstoot = true;
+//        passiveMode =true;
+//        // нужно отослать адрес и порт
+//        pasvPort[0]=qrand()%255+1;
+//        pasvPort[1]=qrand()%255;
+//        sendToClient("227 Entering Passive mode ("+peerAddress().toString().replace(".",",")+
+//                     ","+QString::number(pasvPort[0])+","+QString::number(pasvPort[1])+")");
+//        return;
+//    }
 
     if(list[0]=="TYPE"){
         cmdIsUnderstoot = true;
@@ -159,6 +157,9 @@ void FTPSession::parsingQuery(QString query){
         }
         else if(passiveMode && pasvPort.size()==2){
             // пассивный режим и отосланый порт
+            qDebug()<<this->peerAddress().toString();
+            FTPDataOut *dataOut = new FTPDataOut(this->peerAddress(),pasvPort[0]*256+pasvPort[1],20,this);
+            pDataOut = dataOut;
         }
         else{
             //неправильная последовательность команд
@@ -226,8 +227,10 @@ void FTPSession::parsingQuery(QString query){
                 listStr+=" Aug 01 15:59 ";
                 listStr+=fileInfo.fileName();
                 listStr+="\r\n";
+                //QString
                 pDataOut->sendTextData(listStr);
             }
+
         pDataOut->sendTextData("end_of_file\r\n");
         pDataOut->close();
         qDebug()<<"Transfer complete";
@@ -274,7 +277,8 @@ bool FTPSession::checkUserPassword(QString pass){
 
 
 QString FTPSession::getUserWorkDir(QString user){
-    return userName+"_work_directory";
+    //return userName+"_work_directory";
+    return currentDirectory.dirName();
 }
 
 
