@@ -151,13 +151,11 @@ void FTPSession::parsingQuery(QString query){
             // активные режим и порт
             QString strAddr = "%1.%2.%3.%4";
             strAddr=strAddr.arg(activPort[0]).arg(activPort[1]).arg(activPort[2]).arg(activPort[3]);
-            qDebug()<<strAddr;
             FTPDataOut *dataOut = new FTPDataOut(QHostAddress(strAddr),activPort[4]*256+activPort[5],20,this);
             pDataOut = dataOut;
         }
         else if(passiveMode && pasvPort.size()==2){
             // пассивный режим и отосланый порт
-            qDebug()<<this->peerAddress().toString();
             FTPDataOut *dataOut = new FTPDataOut(this->peerAddress(),pasvPort[0]*256+pasvPort[1],20,this);
             pDataOut = dataOut;
         }
@@ -198,7 +196,8 @@ void FTPSession::parsingQuery(QString query){
                 //sendToClient(listStr);
                 //tmp->write(QByteArray(listStr.toUtf8()));
             }
-
+        pDataOut->sendTextData("end_of_file\r\n");
+        pDataOut->close();
         qDebug()<<"Transfer complete";
         sendToClient("226 Transfer complete");
         }
@@ -253,6 +252,7 @@ void FTPSession::parsingQuery(QString query){
 void FTPSession::sendToClient(QString data){
     qDebug()<<"Server: "<<data;
     data+="\r\n";
+    //write(QByteArray(data.toUtf8()));
     write(QByteArray(data.toUtf8()));
 }
 
