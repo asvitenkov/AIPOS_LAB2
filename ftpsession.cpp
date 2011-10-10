@@ -102,10 +102,16 @@ void FTPSession::parsingQuery(QString query){
 //        cmdIsUnderstoot = true;
 //        passiveMode =true;
 //        // нужно отослать адрес и порт
-//        pasvPort[0]=qrand()%255+1;
-//        pasvPort[1]=qrand()%255;
+////        pasvPort[0]=qrand()%255+1;
+////        pasvPort[1]=qrand()%255;
+////        sendToClient("227 Entering Passive mode ("+peerAddress().toString().replace(".",",")+
+////                     ","+QString::number(pasvPort[0])+","+QString::number(pasvPort[1])+")");
+
+//        pasvPort[0]=200;
+//        pasvPort[1]=128;
 //        sendToClient("227 Entering Passive mode ("+peerAddress().toString().replace(".",",")+
 //                     ","+QString::number(pasvPort[0])+","+QString::number(pasvPort[1])+")");
+
 //        return;
 //    }
 
@@ -156,6 +162,7 @@ void FTPSession::parsingQuery(QString query){
         }
         else if(passiveMode && pasvPort.size()==2){
             // пассивный режим и отосланый порт
+            qDebug()<<"PASV"<<pasvPort;
             FTPDataOut *dataOut = new FTPDataOut(this->peerAddress(),pasvPort[0]*256+pasvPort[1],20,this);
             pDataOut = dataOut;
         }
@@ -200,6 +207,7 @@ void FTPSession::parsingQuery(QString query){
         pDataOut->close();
         qDebug()<<"Transfer complete";
         sendToClient("226 Transfer complete");
+
         }
         else if(list.size()==1){
             // без аргумента
