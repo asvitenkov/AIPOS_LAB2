@@ -7,6 +7,9 @@
 #include <QString>
 #include <QList>
 #include <QDir>
+#include <QFileInfo>
+#include <QFileInfoList>
+#include "ftpdataout.h"
 
 class FTPSession : public QTcpSocket
 {
@@ -30,8 +33,10 @@ private:
     bool checkUserPassword(QString);
     QString getUserWorkDir(QString);
     bool passiveMode;
+    bool activMode;
     QString type;
     QList<int> pasvPort;
+    QList<int> activPort;
     QDir currentDirectory;
     bool setCurrentDirectory(QString);
 

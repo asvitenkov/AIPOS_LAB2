@@ -7,8 +7,10 @@ TEMPLATE = app
 SOURCES += main.cpp \
     mainwindow.cpp \
     ftpserver.cpp \
-    ftpsession.cpp
+    ftpsession.cpp \
+    ftpdataout.cpp
 HEADERS += mainwindow.h \
     ftpserver.h \
-    ftpsession.h
+    ftpsession.h \
+    ftpdataout.h
 FORMS += mainwindow.ui
