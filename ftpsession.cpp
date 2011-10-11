@@ -98,22 +98,22 @@ void FTPSession::parsingQuery(QString query){
         return;
     }
 
-//    if(list[0]=="PASV"){
-//        cmdIsUnderstoot = true;
-//        passiveMode =true;
-//        // нужно отослать адрес и порт
-////        pasvPort[0]=qrand()%255+1;
-////        pasvPort[1]=qrand()%255;
-////        sendToClient("227 Entering Passive mode ("+peerAddress().toString().replace(".",",")+
-////                     ","+QString::number(pasvPort[0])+","+QString::number(pasvPort[1])+")");
-
-//        pasvPort[0]=200;
-//        pasvPort[1]=128;
+    if(list[0]=="PASV"){
+        cmdIsUnderstoot = true;
+        passiveMode =true;
+        // нужно отослать адрес и порт
+//        pasvPort[0]=qrand()%255+1;
+//        pasvPort[1]=qrand()%255;
 //        sendToClient("227 Entering Passive mode ("+peerAddress().toString().replace(".",",")+
 //                     ","+QString::number(pasvPort[0])+","+QString::number(pasvPort[1])+")");
 
-//        return;
-//    }
+        pasvPort[0]=200;
+        pasvPort[1]=128;
+        sendToClient("227 Entering Passive mode ("+peerAddress().toString().replace(".",",")+
+                     ","+QString::number(pasvPort[0])+","+QString::number(pasvPort[1])+")");
+
+        return;
+    }
 
     if(list[0]=="TYPE"){
         cmdIsUnderstoot = true;
@@ -163,7 +163,7 @@ void FTPSession::parsingQuery(QString query){
         else if(passiveMode && pasvPort.size()==2){
             // пассивный режим и отосланый порт
             qDebug()<<"PASV"<<pasvPort;
-            FTPDataOut *dataOut = new FTPDataOut(this->peerAddress(),pasvPort[0]*256+pasvPort[1],20,this);
+            FTPDataOut *dataOut = new FTPDataOut(QHostAddress("172.31.5.51"),this->peerPort(),pasvPort[0]*256+pasvPort[1],this);
             pDataOut = dataOut;
         }
         else{
@@ -199,7 +199,7 @@ void FTPSession::parsingQuery(QString query){
                 date=fileInfo.created();
                 listStr+=" Aug 01 15:59 ";
                 listStr+=fileInfo.fileName();
-                listStr+="\r\n";
+                //listStr+="\r\n";
                 //sendToClient(listStr);
                 //tmp->write(QByteArray(listStr.toUtf8()));
             }
