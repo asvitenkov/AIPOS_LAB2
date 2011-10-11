@@ -11,10 +11,13 @@
 #include <QFileInfoList>
 #include "ftpdataout.h"
 
+//#include "ftpserver.h"
+
+class FTPServer;
+
 class FTPSession : public QTcpSocket
 {
-    Q_OBJECT
-
+Q_OBJECT
 public:
     FTPSession(QObject *parent = 0);
 
@@ -39,6 +42,9 @@ private:
     QList<int> activPort;
     QDir currentDirectory;
     bool setCurrentDirectory(QString);
+
+signals:
+    void sessionClose(int);
 
 
 };

@@ -6,6 +6,7 @@
 #include <QRegExp>
 #include <QDateTime>
 #include <QAbstractSocket>
+#include "ftpserver.h"
 
 
 FTPSession::FTPSession(QObject *parent):QTcpSocket(parent)
@@ -415,6 +416,9 @@ void FTPSession::parsingQuery(QString query){
     if(list[0]=="QUIT"){
         cmdIsUnderstoot = true;
         sendToClient("220 Good Bye");
+        dynamic_cast<FTPServer*>(this->parent())->sessionClose(this->socketDescriptor());
+        return;
+        //emit sessionClose(this->socketDescriptor());
         // врн  рн мсфмн декюрэ врнаш гюйпшрэ щрс яеяяхч
         //######################################
         //######################################
