@@ -35,7 +35,7 @@ void FTPSession::readClient(){
 
 
 void FTPSession::parsingQuery(QString query){
-    qDebug()<<"Client: "<<query;
+    qDebug()<<"Client: "<<query.replace("\r\n","");
     query = query.replace("\r\n","");
     QStringList list = query.split(" ");
     bool cmdIsUnderstoot = false;
@@ -65,14 +65,18 @@ void FTPSession::parsingQuery(QString query){
         cmdIsUnderstoot = true;
         if(loginIsOk){
             // принята команда pass после команды user
-            if(checkUserPassword(list[1])){
-                // пароль принят
-                sendToClient("230 user "+userName+" logged in");
-                passIsOk = true;
-            }
+            if(list.size()>=2)
+                if(checkUserPassword(list[1])){
+                    // пароль принят
+                    sendToClient("230 user "+userName+" logged in");
+                    passIsOk = true;
+                }
+                else{
+                    // пароль не принят
+                    sendToClient("530 Not logged in, user or password incorrect!");
+                }
             else{
-                // пароль не принят
-                sendToClient("530 Not logged in, user or password incorrect!");
+                sendToClient("501 Error in parameters or arguments");
             }
         }
         else{
@@ -99,9 +103,10 @@ void FTPSession::parsingQuery(QString query){
         sendToClient("211 end");
         return;
     }
-    if(list[0]=="PWD"){
+    if(list[0]=="PWD" || list[0]=="XPWD"){
         cmdIsUnderstoot = true;
-        sendToClient("257 " + QString("\"\\")+getUserWorkDir(userName)+"\" is a current directory");
+        sendToClient("257 " + QString("\"")+getUserWorkDir(userName)+"\" is a current directory");
+        //sendToClient(QString("257 ") + "\"/\" is a current directory");
         return;
     }
 
@@ -139,7 +144,6 @@ void FTPSession::parsingQuery(QString query){
             QStringList listAdress = (list[1]).split(",");
             for(int i=0; i<listAdress.size();i++) lst.push_back((listAdress[i].toInt()));
             activPort = lst;
-            qDebug()<<"PORT "<< activPort;
             sendToClient("200 Port command successful");
         }
         else{
@@ -170,7 +174,6 @@ void FTPSession::parsingQuery(QString query){
         }
         else if(passiveMode && pasvPort.size()==2){
             // пассивный режим и отосланый порт
-            qDebug()<<"PASV"<<pasvPort;
             FTPDataOut *dataOut = new FTPDataOut(this->peerAddress(),this->peerPort(),pasvPort[0]*256+pasvPort[1],this);
             pDataOut = dataOut;
         }
@@ -213,7 +216,6 @@ void FTPSession::parsingQuery(QString query){
                 listStr+="\r\n";
                 pDataOut->sendTextData(listStr);
                 pDataOut->sendTextData("end_of_file\r\n");
-                qDebug()<<"Transfer complete";
                 sendToClient("226 Transfer complete");
             }
             else{
@@ -254,7 +256,6 @@ void FTPSession::parsingQuery(QString query){
 
             pDataOut->sendTextData("end_of_file\r\n");
             pDataOut->close();
-            qDebug()<<"Transfer complete";
             sendToClient("226 Transfer complete");
 
         }
@@ -264,22 +265,128 @@ void FTPSession::parsingQuery(QString query){
         }
         return;
     }
+    if(list[0]=="NLST"){
+
+        // нужно передать список файлов с информацией
+        // для начала нужно сконфигурировать отправляемую информацию
+        // если есть аргумент, то нам нужна информация по аргументу
+
+        // НУЖНО ПРОВЕРИТЬ, А МОЖЕМ ЛИ МЫ ПЕРЕДАТЬ?
+        // ВЫПОЛНЕНА ЛИ КОМАНДА ПОРТ ИЛИ ВКЛЮЧЁН ПАССИВНЫЙ РЕЖИМ?
+        // #######################################################
+        cmdIsUnderstoot = true;
+
+        FTPDataOut *pDataOut;
+
+        if(!activPort.isEmpty() && activMode && activPort.size()==6){
+            // активные режим и порт
+            QString strAddr = "%1.%2.%3.%4";
+            strAddr=strAddr.arg(activPort[0]).arg(activPort[1]).arg(activPort[2]).arg(activPort[3]);
+            FTPDataOut *dataOut = new FTPDataOut(QHostAddress(strAddr),activPort[4]*256+activPort[5],20,this);
+            pDataOut = dataOut;
+        }
+        else if(passiveMode && pasvPort.size()==2){
+            // пассивный режим и отосланый порт
+            FTPDataOut *dataOut = new FTPDataOut(this->peerAddress(),this->peerPort(),pasvPort[0]*256+pasvPort[1],this);
+            pDataOut = dataOut;
+        }
+        else{
+            //неправильная последовательность команд
+            sendToClient("503 incorrect command sequence");
+            return;
+        }
+
+
+        QString listStr;
+        if(list.size()==2){
+            // есть аргумент
+//            QFileInfoList fileInfoList = currentDirectory.entryInfoList();
+//            QFileInfo fileInfo;
+            QDateTime date;
+
+            QStringList filters;
+            filters<<list[1];
+            QFileInfoList fileInfoList = currentDirectory.entryInfoList(filters,QDir::Dirs | QDir::Files);
+            QFileInfo fileInfo;
+            if(!fileInfoList.isEmpty()){
+                sendToClient("150 Open ASCII mode data connection for directory list");
+                listStr.clear();
+                fileInfo=fileInfoList.takeFirst();
+                listStr+=fileInfo.fileName();
+                listStr+="\r\n";
+                pDataOut->sendTextData(listStr);
+                pDataOut->sendTextData("end_of_file\r\n");
+                sendToClient("226 Transfer complete");
+            }
+            else{
+                sendToClient(QString("550 Directory \"%1\" is not found").arg(list[1]));
+            }
+            pDataOut->close();
+            return;
+
+        }
+        else if(list.size()==1){
+            // без аргумента
+            sendToClient("150 Open ASCII mode data connection for directory list");
+            QFileInfoList fileInfoList = currentDirectory.entryInfoList();
+            QFileInfo fileInfo;
+            QDateTime date;
+
+            for(int i=0;i<fileInfoList.size();i++){
+                listStr.clear();
+                fileInfo=fileInfoList[i];
+                listStr+=fileInfo.fileName();
+                listStr+="\r\n";
+                //QString
+                pDataOut->sendTextData(listStr);
+            }
+
+            pDataOut->sendTextData("end_of_file\r\n");
+            pDataOut->close();
+            sendToClient("226 Transfer complete");
+
+        }
+        else{
+            sendToClient("501 Error in parameters or arguments");
+            return;
+        }
+        return;
+    }
+
     if(list[0]=="CWD"){
+        // ##############################
+        // ##############################
+        // ##############################
+        // ##############################
+        // ##############################
+        // ##############################
+        // необходимо добавить возможность смены каталога введё путь типа Qt/bin/exe а то не работает=(
+        // проверить наличие символа / в строке
+
         cmdIsUnderstoot = true;
         QString dirName="";
         for(int i=1;i<list.size();i++) dirName =dirName + " " + list[i];
         dirName = dirName.trimmed();
-        qDebug()<<dirName;
-//        if(currentDirectory.exists(dirName)){
-        QStringList filters;
-        filters<<dirName;
-        QFileInfoList fileInfoList = currentDirectory.entryInfoList(filters,QDir::Dirs);
-        qDebug()<<fileInfoList.size();
-        if(!fileInfoList.isEmpty() && (fileInfoList[0].fileName().toUpper())==dirName.toUpper()){
+
+        if(dirName==".."){
+            currentDirectory.cdUp();
+            sendToClient((QString("250 Command successful \"%1\" is a current directory").arg(currentDirectory.absolutePath())).replace("D:",""));
+            return;
+        }
+
+        QDir tmpDir(currentDirectory.absolutePath()+"\\"+dirName);
+        //if(tmpDir.isReadable()
+
+//        QStringList filters;
+//        filters<<dirName;
+//        QFileInfoList fileInfoList = currentDirectory.entryInfoList(filters,QDir::Dirs);
+        qDebug()<<tmpDir.absolutePath();
+        if(tmpDir.exists()){
             // такая директория есть проверяем, есть ли к ней доступ
-            if(currentDirectory.cd(dirName)){
+            if(tmpDir.isReadable()){
                 // переход возможен
-                sendToClient(QString("250 Command successful \"/%1\" is a current directory").arg(currentDirectory.dirName()));
+                currentDirectory=tmpDir;
+                sendToClient((QString("250 Command successful \"%1\" is a current directory").arg(currentDirectory.absolutePath())).replace("D:",""));
             }
             else{
                 // переход невозможен
@@ -290,6 +397,7 @@ void FTPSession::parsingQuery(QString query){
             // такой директории не существует
             sendToClient(QString("550 CWD failed \"%1\" directory not found").arg(dirName));
         }
+        return;
     }
     if(list[0]=="MKD"){
         cmdIsUnderstoot = true;
@@ -298,6 +406,11 @@ void FTPSession::parsingQuery(QString query){
         dirName = dirName.trimmed();
         qDebug()<<dirName;
         //if(currentDirectory);
+    }
+    if(list[0]=="CDUP"){
+        currentDirectory.cdUp();
+        sendToClient((QString("250 Command successful \"%1\" is a current directory").arg(currentDirectory.absolutePath())).replace("D:",""));
+        return;
     }
     if(list[0]=="QUIT"){
         cmdIsUnderstoot = true;
@@ -318,7 +431,7 @@ void FTPSession::parsingQuery(QString query){
 
 
 void FTPSession::sendToClient(QString data){
-    qDebug()<<"Server: "<<data;
+    qDebug()<<"Server: "<<data.replace("\r\n","");
     data+="\r\n";
     //write(QByteArray(data.toUtf8()));
     write(QByteArray(data.toUtf8()));
@@ -334,11 +447,16 @@ bool FTPSession::checkUserName(QString name){
 
 bool FTPSession::checkUserPassword(QString pass){
     if(isAnonymous){
-        if(pass.contains("@") && pass.contains(".") && pass.length()>3)
+        if(pass.contains("@") && pass.contains(".") && pass.length()>3){
+            passIsOk =true;
             return true;
+        }
         else return false;
     }
-    if(pass=="1234") return true;
+    if(pass=="1234"){
+        passIsOk =true;
+        return true;
+    }
     return false;
 }
 
@@ -346,7 +464,7 @@ bool FTPSession::checkUserPassword(QString pass){
 
 QString FTPSession::getUserWorkDir(QString user){
     //return userName+"_work_directory";
-    return currentDirectory.dirName();
+    return currentDirectory.absolutePath().replace("D:","");
 }
 
 

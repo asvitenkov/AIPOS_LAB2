@@ -13,6 +13,11 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     new FTPServer(QHostAddress("172.31.5.51"),21,this);
+
+
+
+    QApplication::setStyle("Cleanlooks");
+    QApplication::setPalette(QApplication::style()->standardPalette());
 //    QDir dir("D:\\");
 //    QFileInfoList fileInfoList = dir.entryInfoList();
 //    QFileInfo fileInfo;

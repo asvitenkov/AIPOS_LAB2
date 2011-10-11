@@ -20,7 +20,7 @@ bool FTPDataOut::setPort(int _port){
 
 
 void FTPDataOut::sendTextData(QString _data){
-    qDebug()<<_data.toLocal8Bit();
+    //qDebug()<<_data.toLocal8Bit();
     //write(QByteArray(_data.toUtf8()));
     //char *t=_data;
     write(_data.toLocal8Bit());
@@ -28,6 +28,6 @@ void FTPDataOut::sendTextData(QString _data){
 }
 
 void FTPDataOut::sendTextDataSlot(){
-    qDebug()<<"FTPDataOut::sendTextDataSlot()";
+    //qDebug()<<"FTPDataOut::sendTextDataSlot()";
     write(QByteArray(data.toUtf8()));
 }
