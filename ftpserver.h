@@ -7,10 +7,11 @@
 class FTPServer : public QTcpServer
 {
 public:
-    FTPServer(QObject *parent = 0 );
+    FTPServer(QHostAddress _serverAdress, int port,QObject *parent = 0 );
 
 private:
     void incomingConnection(int socketID);
+    QHostAddress serverAdress;
 };
 
 #endif // FTPSERVER_H

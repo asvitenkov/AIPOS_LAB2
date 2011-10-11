@@ -1,9 +1,9 @@
 #include "ftpserver.h"
 #include <QTcpSocket>
 
-FTPServer::FTPServer(QObject *parent): QTcpServer(parent)
+FTPServer::FTPServer(QHostAddress _serverAdress, int port, QObject *parent): QTcpServer(parent), serverAdress(_serverAdress)
 {
-    this->listen(QHostAddress::Any,21);
+    this->listen(QHostAddress::Any,port);
     // нужна проверка, а не занят ли этот порт!!!!1
 //    $$$$$$$$$$$
 //    $$$$$$$$$$$

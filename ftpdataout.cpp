@@ -8,7 +8,7 @@ FTPDataOut::FTPDataOut(QHostAddress _hostAdress, int _hostPort, int _localPort, 
     qDebug()<<_hostAdress.toString()<<_hostPort;
     setLocalPort(_localPort);
     setLocalAddress(_hostAdress);
-    //connectToHost(hostAdress,hostPort,QIODevice::ReadWrite);
+    connectToHost(hostAdress,hostPort,QIODevice::ReadWrite);
 }
 
 

@@ -8,9 +8,11 @@ SOURCES += main.cpp \
     mainwindow.cpp \
     ftpserver.cpp \
     ftpsession.cpp \
-    ftpdataout.cpp
+    ftpdataout.cpp \
+    ftpdatatransferchannel.cpp
 HEADERS += mainwindow.h \
     ftpserver.h \
     ftpsession.h \
-    ftpdataout.h
+    ftpdataout.h \
+    ftpdatatransferchannel.h
 FORMS += mainwindow.ui

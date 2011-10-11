@@ -26,7 +26,10 @@ FTPSession::FTPSession(QObject *parent):QTcpSocket(parent)
 
 
 void FTPSession::readClient(){
-    QString query = QString::fromUtf8(this->readAll()).replace("\r\n","");
+    //QString query = QString::fromUtf8(this->readAll()).replace("\r\n","");
+    //QString query = this->readAll().replace("\r\n","");
+    QString query;
+    query = query.fromLocal8Bit(this->readAll().data());
     parsingQuery(query);
 }
 
@@ -36,6 +39,10 @@ void FTPSession::parsingQuery(QString query){
     query = query.replace("\r\n","");
     QStringList list = query.split(" ");
     bool cmdIsUnderstoot = false;
+
+
+    // НУЖНО ЕЩЁ ВО ВРЕМЯ КОМАНД СТИРАТЬ ИСПОЛЬЗОВАННЫЕ ПОРТЫ И ЛОГИЧЕСКИЕ ПЕРЕМЕННЫЙ МЕНЯТЬ НУЖНО ПОТОМ ПОСМОТРЕТЬ ГДЕ И ЧТО
+
 
     if(list[0]=="USER"){
         cmdIsUnderstoot = true;
@@ -98,29 +105,30 @@ void FTPSession::parsingQuery(QString query){
         return;
     }
 
-    if(list[0]=="PASV"){
-        cmdIsUnderstoot = true;
-        passiveMode =true;
-        // нужно отослать адрес и порт
-//        pasvPort[0]=qrand()%255+1;
-//        pasvPort[1]=qrand()%255;
-//        sendToClient("227 Entering Passive mode ("+peerAddress().toString().replace(".",",")+
-//                     ","+QString::number(pasvPort[0])+","+QString::number(pasvPort[1])+")");
 
-        pasvPort[0]=200;
-        pasvPort[1]=128;
-        sendToClient("227 Entering Passive mode ("+peerAddress().toString().replace(".",",")+
-                     ","+QString::number(pasvPort[0])+","+QString::number(pasvPort[1])+")");
+    //    if(list[0]=="PASV"){
+    //        cmdIsUnderstoot = true;
+    //        passiveMode =true;
+    //        // нужно отослать адрес и порт
+    ////        pasvPort[0]=qrand()%255+1;
+    ////        pasvPort[1]=qrand()%255;
+    ////        sendToClient("227 Entering Passive mode ("+peerAddress().toString().replace(".",",")+
+    ////                     ","+QString::number(pasvPort[0])+","+QString::number(pasvPort[1])+")");
 
-        return;
-    }
+    //        pasvPort[0]=250;
+    //        pasvPort[1]=128;
+    //        sendToClient("227 Entering Passive mode ("+peerAddress().toString().replace(".",",")+
+    //                     ","+QString::number(pasvPort[0])+","+QString::number(pasvPort[1])+")");
 
-    if(list[0]=="TYPE"){
-        cmdIsUnderstoot = true;
-        if(list[1]=="A" || list[1]=="I") type = list[1];
-        sendToClient("200 Type set to "+type);
-        return;
-    }
+    //        return;
+    //    }
+
+//    if(list[0]=="TYPE"){
+//        cmdIsUnderstoot = true;
+//        if(list[1]=="A" || list[1]=="I") type = list[1];
+//        sendToClient("200 Type set to "+type);
+//        return;
+//    }
     if(list[0]=="PORT"){
         cmdIsUnderstoot = true;
         QRegExp texp("[0-9]{1,3}\\,[0-9]{1,3}\\,[0-9]{1,3}\\,[0-9]{1,3}\\,[0-9]{1,3}\\,[0-9]{1,3}");
@@ -163,28 +171,31 @@ void FTPSession::parsingQuery(QString query){
         else if(passiveMode && pasvPort.size()==2){
             // пассивный режим и отосланый порт
             qDebug()<<"PASV"<<pasvPort;
-            FTPDataOut *dataOut = new FTPDataOut(QHostAddress("172.31.5.51"),this->peerPort(),pasvPort[0]*256+pasvPort[1],this);
+            FTPDataOut *dataOut = new FTPDataOut(this->peerAddress(),this->peerPort(),pasvPort[0]*256+pasvPort[1],this);
             pDataOut = dataOut;
         }
         else{
             //неправильная последовательность команд
             sendToClient("503 incorrect command sequence");
+            return;
         }
 
-        sendToClient("150 Open ASCII mode data connection for directory list");
+
         QString listStr;
         if(list.size()==2){
             // есть аргумент
-            QFileInfoList fileInfoList = currentDirectory.entryInfoList();
-            QFileInfo fileInfo;
+//            QFileInfoList fileInfoList = currentDirectory.entryInfoList();
+//            QFileInfo fileInfo;
             QDateTime date;
 
-
-
-
-            for(int i=0;i<fileInfoList.size();i++){
+            QStringList filters;
+            filters<<list[1];
+            QFileInfoList fileInfoList = currentDirectory.entryInfoList(filters,QDir::Dirs | QDir::Files);
+            QFileInfo fileInfo;
+            if(!fileInfoList.isEmpty()){
+                sendToClient("150 Open ASCII mode data connection for directory list");
                 listStr.clear();
-                fileInfo=fileInfoList[i];
+                fileInfo=fileInfoList.takeFirst();
                 if(fileInfo.isDir()) listStr+=("d");
                 else listStr+="-";
                 if(fileInfo.permission(QFile::ReadOwner)) listStr+="r";
@@ -199,19 +210,22 @@ void FTPSession::parsingQuery(QString query){
                 date=fileInfo.created();
                 listStr+=" Aug 01 15:59 ";
                 listStr+=fileInfo.fileName();
-                //listStr+="\r\n";
-                //sendToClient(listStr);
-                //tmp->write(QByteArray(listStr.toUtf8()));
+                listStr+="\r\n";
+                pDataOut->sendTextData(listStr);
+                pDataOut->sendTextData("end_of_file\r\n");
+                qDebug()<<"Transfer complete";
+                sendToClient("226 Transfer complete");
             }
-        pDataOut->sendTextData("end_of_file\r\n");
-        pDataOut->close();
-        qDebug()<<"Transfer complete";
-        sendToClient("226 Transfer complete");
+            else{
+                sendToClient(QString("550 Directory \"%1\" is not found").arg(list[1]));
+            }
+            pDataOut->close();
+            return;
 
         }
         else if(list.size()==1){
             // без аргумента
-
+            sendToClient("150 Open ASCII mode data connection for directory list");
             QFileInfoList fileInfoList = currentDirectory.entryInfoList();
             QFileInfo fileInfo;
             QDateTime date;
@@ -238,10 +252,10 @@ void FTPSession::parsingQuery(QString query){
                 pDataOut->sendTextData(listStr);
             }
 
-        pDataOut->sendTextData("end_of_file\r\n");
-        pDataOut->close();
-        qDebug()<<"Transfer complete";
-        sendToClient("226 Transfer complete");
+            pDataOut->sendTextData("end_of_file\r\n");
+            pDataOut->close();
+            qDebug()<<"Transfer complete";
+            sendToClient("226 Transfer complete");
 
         }
         else{
@@ -249,6 +263,52 @@ void FTPSession::parsingQuery(QString query){
             return;
         }
         return;
+    }
+    if(list[0]=="CWD"){
+        cmdIsUnderstoot = true;
+        QString dirName="";
+        for(int i=1;i<list.size();i++) dirName =dirName + " " + list[i];
+        dirName = dirName.trimmed();
+        qDebug()<<dirName;
+//        if(currentDirectory.exists(dirName)){
+        QStringList filters;
+        filters<<dirName;
+        QFileInfoList fileInfoList = currentDirectory.entryInfoList(filters,QDir::Dirs);
+        qDebug()<<fileInfoList.size();
+        if(!fileInfoList.isEmpty() && (fileInfoList[0].fileName().toUpper())==dirName.toUpper()){
+            // такая директория есть проверяем, есть ли к ней доступ
+            if(currentDirectory.cd(dirName)){
+                // переход возможен
+                sendToClient(QString("250 Command successful \"/%1\" is a current directory").arg(currentDirectory.dirName()));
+            }
+            else{
+                // переход невозможен
+                sendToClient(QString("550 CWD failed \"%1\" directory is not readable").arg(dirName));
+            }
+        }
+        else{
+            // такой директории не существует
+            sendToClient(QString("550 CWD failed \"%1\" directory not found").arg(dirName));
+        }
+    }
+    if(list[0]=="MKD"){
+        cmdIsUnderstoot = true;
+        QString dirName="";
+        for(int i=1;i<list.size();i++) dirName =dirName + " " + list[i];
+        dirName = dirName.trimmed();
+        qDebug()<<dirName;
+        //if(currentDirectory);
+    }
+    if(list[0]=="QUIT"){
+        cmdIsUnderstoot = true;
+        sendToClient("220 Good Bye");
+        // ЧТО  ТО НУЖНО ДЕЛАТЬ ЧТОБЫ ЗАКРЫТЬ ЭТУ СЕССИЮ
+        //######################################
+        //######################################
+        //######################################
+        //######################################
+        //######################################
+        //######################################
     }
     if(!cmdIsUnderstoot) sendToClient("500 Command is not recognized");
 
