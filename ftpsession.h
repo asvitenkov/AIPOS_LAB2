@@ -39,6 +39,7 @@ private:
     void sendToClient(QString);
     bool checkUserName(QString);
     bool checkUserPassword(QString);
+    bool checkPermissionCreateDir(QString);
     QString getUserWorkDir(QString);
     bool passiveMode;
     bool activMode;

@@ -141,8 +141,13 @@ void FTPSession::parsingQuery(QString query){
 
     if(list[0]=="TYPE"){
         cmdIsUnderstoot = true;
-        if(list[1]=="A" || list[1]=="I") type = list[1];
-        sendToClient("200 Type set to "+type);
+        if(list[1]=="A" || list[1]=="I"){
+            type = list[1];
+            sendToClient("200 Type set to "+type);
+        }
+        else{
+            sendToClient("501 Error in parameters or arguments");
+        }
         return;
     }
     if(list[0]=="PORT"){
@@ -207,7 +212,7 @@ void FTPSession::parsingQuery(QString query){
             QFileInfoList fileInfoList = currentDirectory.entryInfoList(filters,QDir::Dirs | QDir::Files);
             QFileInfo fileInfo;
             if(!fileInfoList.isEmpty()){
-                sendToClient("150 Open ASCII mode data connection for directory list");
+                sendToClient("150 Opening data channel for directory list");
                 listStr.clear();
                 fileInfo=fileInfoList.takeFirst();
                 if(fileInfo.isDir()) listStr+=("d");
@@ -238,7 +243,7 @@ void FTPSession::parsingQuery(QString query){
         }
         else if(list.size()==1){
             // без аргумента
-            sendToClient("150 Open ASCII mode data connection for directory list");
+            sendToClient("150 Opening data channel for directory list");
             QFileInfoList fileInfoList = currentDirectory.entryInfoList();
             QFileInfo fileInfo;
             QDateTime date;
@@ -320,7 +325,7 @@ void FTPSession::parsingQuery(QString query){
             QFileInfoList fileInfoList = currentDirectory.entryInfoList(filters,QDir::Dirs | QDir::Files);
             QFileInfo fileInfo;
             if(!fileInfoList.isEmpty()){
-                sendToClient("150 Open ASCII mode data connection for directory list");
+                sendToClient("150 Opening data channel for directory list");
                 listStr.clear();
                 fileInfo=fileInfoList.takeFirst();
                 listStr+=fileInfo.fileName();
@@ -338,7 +343,7 @@ void FTPSession::parsingQuery(QString query){
         }
         else if(list.size()==1){
             // без аргумента
-            sendToClient("150 Open ASCII mode data connection for directory list");
+            sendToClient("150 Opening data channel for directory list");
             QFileInfoList fileInfoList = currentDirectory.entryInfoList();
             QFileInfo fileInfo;
             QDateTime date;
@@ -366,21 +371,28 @@ void FTPSession::parsingQuery(QString query){
     if(list[0]=="CWD"){
         cmdIsUnderstoot = true;
         QString dirName="";
+        //if(!list.isEmpty()) dirName = (list[0]).trimmed();
         for(int i=1;i<list.size();i++) dirName =dirName + " " + list[i];
-        dirName = dirName.trimmed();
+        //dirName = dirName.trimmed().replace("\\","/").replace("//","/");
+        dirName = dirName.trimmed().replace("\\","/");
+        while(dirName.indexOf("//")!=-1){
+            dirName = dirName.replace("//","/");
+        }
+        qDebug()<<"DIRECTORY "<<dirName;
         if(dirName.isEmpty()){
             sendToClient("501 Error in parameters or arguments");
             return;
         }
         if(dirName==".."){
             currentDirectory.cdUp();
-            sendToClient((QString("250 Command successful \"%1\" is a current directory").arg(getUserWorkDir(userName))));
+            sendToClient((QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName))));
             return;
         }
         if(dirName=="/"){
             // переход к корню
-            currentDirectory.setPath("D:");
-            sendToClient((QString("250 Command successful \"%1\" is a current directory").arg(getUserWorkDir(userName))));
+            //currentDirectory.setPath("D:");
+            setUserDir(userDir);
+            sendToClient((QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName))));
             return;
         }
         if(dirName[0]=='/'){
@@ -418,7 +430,7 @@ void FTPSession::parsingQuery(QString query){
             if(tmpDir.isReadable()){
                 // переход возможен
                 currentDirectory=tmpDir;
-                sendToClient((QString("250 Command successful \"%1\" is a current directory").arg(currentDirectory.absolutePath())).replace("D:",""));
+                sendToClient(QString("250 Command successful \"%1\" is a current directory").arg(getUserWorkDir(userName)));
                 return;
             }
             else{
@@ -434,17 +446,89 @@ void FTPSession::parsingQuery(QString query){
         }
         return;
     }
-    if(list[0]=="MKD"){
+    if(list[0]=="MKD" || list[0]=="XMKD"){
         cmdIsUnderstoot = true;
+        if(!checkPermissionCreateDir(userName)){
+            sendToClient("550 Can't create directory. Permission denied");
+            return;
+        }
         QString dirName="";
         for(int i=1;i<list.size();i++) dirName =dirName + " " + list[i];
-        dirName = dirName.trimmed();
+        dirName = dirName.trimmed().replace("\\","/");
+        while(dirName.indexOf("//")!=-1){
+            dirName = dirName.replace("//","/");
+        }
         qDebug()<<dirName;
-        //if(currentDirectory);
+//        if(!dirName.isEmpty()){
+//            // имя сосздаваемой папки или пути не пустое
+//            if(dirName[0]=='/'){
+//                // абсолютный путь
+//                QDir tempDir(userDir);
+//                if(tempDir.mkpath(dirName)){
+//                    // путь создан
+//                    sendToClient(QString("257 \"/%1\" created successfully").arg(dirName));
+//                }
+//                else{
+//                    // путь не создан
+//                    // проверить, может директория уже существует
+//                    sendToClient(QString("550 \"/%1\" directory not exist").arg(dirName));
+//                }
+//            }
+//            else{
+//                // относительный путь
+//                if(currentDirectory.mkpath(dirName)){
+//                    // поддиректория создана
+//                    sendToClient(QString("257 \"/%1\" created successfully").arg(getUserWorkDir(userName)));
+//                }
+//                else{
+//                    // поддиректория не создана
+//                    // проверить, может директория уже существует
+//                    sendToClient(QString("550 \"/%1\" directory not exist").arg(dirName));
+//                }
+
+//            }
+//        }
+        QString tempName;
+        if(!dirName.isEmpty()){
+            // имя сосздаваемой папки или пути не пустое
+            if(dirName[0]=='/'){
+                // абсолютный путь
+                tempName = userDir.replace("/","")+dirName;
+                qDebug()<<"ABS "<<tempName;
+            }
+            else{
+                // относительный путь
+                tempName = currentDirectory.absolutePath()+dirName;
+                qDebug()<<"ABS "<<tempName;
+            }
+        }
+        else{
+            // аргумент пуст
+            sendToClient("501 Error in parameters or arguments");
+            return;
+        }
+        QDir tempDir(tempName);
+        if(!tempDir.exists()){
+            // такого каталога нет
+            // пробуем его создать
+            if(currentDirectory.mkpath(tempName)){
+                // каталог создан
+                sendToClient(QString("257 \"%1\" created successfully").arg(tempName).replace(userDir,""));
+            }
+            else{
+                // каталог не создан
+                sendToClient(QString("550 \"/%1\" directory not exist").arg(tempName));
+            }
+        }
+        else{
+            // такой каталог существует уже
+            sendToClient("550 Directory alredy exists");
+        }
+        return;
     }
     if(list[0]=="CDUP"){
         currentDirectory.cdUp();
-        sendToClient((QString("250 Command successful \"%1\" is a current directory").arg(getUserWorkDir(userName))));
+        sendToClient((QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName))));
         return;
     }
     if(list[0]=="QUIT"){
@@ -465,7 +549,8 @@ void FTPSession::sendToClient(QString data){
     qDebug()<<"Server: "<<data.replace("\r\n","");
     data+="\r\n";
     //write(QByteArray(data.toUtf8()));
-    write(QByteArray(data.toUtf8()));
+//    write(QByteArray(data.toUtf8()));
+    write(QByteArray(data.toLocal8Bit()));
 }
 
 
@@ -511,4 +596,10 @@ bool FTPSession::setCurrentDirectory(QString dirName){
 void FTPSession::setUserDir(QString userDirName){
     userDir = userDirName;
     currentDirectory.setPath(userDir);
+}
+
+
+bool FTPSession::checkPermissionCreateDir(QString _userName){
+    // тут в идеале какая-то проверка но пока нет ничего=)
+    return true;
 }
