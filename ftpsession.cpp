@@ -20,7 +20,7 @@ FTPSession::FTPSession(QObject *parent):QTcpSocket(parent)
     activMode = false;
     pasvPort.push_back(0);
     pasvPort.push_back(0);
-    setUserDir("D:");
+    setUserDir("D:/");
     //setCurrentDirectory("D:\\");
     currentDirectory.setFilter(QDir::Dirs | QDir::Files );
 
@@ -363,17 +363,7 @@ void FTPSession::parsingQuery(QString query){
         }
         return;
     }
-
     if(list[0]=="CWD"){
-        // ##############################
-        // ##############################
-        // ##############################
-        // ##############################
-        // ##############################
-        // ##############################
-        // необходимо добавить возможность смены каталога введё путь типа Qt/bin/exe а то не работает=(
-        // проверить наличие символа / в строке
-
         cmdIsUnderstoot = true;
         QString dirName="";
         for(int i=1;i<list.size();i++) dirName =dirName + " " + list[i];
@@ -384,13 +374,13 @@ void FTPSession::parsingQuery(QString query){
         }
         if(dirName==".."){
             currentDirectory.cdUp();
-            sendToClient((QString("250 Command successful \"%1\" is a current directory").arg(currentDirectory.absolutePath())).replace("D:",""));
+            sendToClient((QString("250 Command successful \"%1\" is a current directory").arg(getUserWorkDir(userName))));
             return;
         }
         if(dirName=="/"){
             // переход к корню
             currentDirectory.setPath("D:");
-            sendToClient((QString("250 Command successful \"%1\" is a current directory").arg(currentDirectory.absolutePath())).replace("D:",""));
+            sendToClient((QString("250 Command successful \"%1\" is a current directory").arg(getUserWorkDir(userName))));
             return;
         }
         if(dirName[0]=='/'){
@@ -401,7 +391,7 @@ void FTPSession::parsingQuery(QString query){
                 if(tmpDir.isReadable()){
                     // переход возможен
                     currentDirectory=tmpDir;
-                    sendToClient((QString("250 Command successful \"%1\" is a current directory").arg(currentDirectory.absolutePath())).replace("D:",""));
+                    sendToClient((QString("250 Command successful \"%1\" is a current directory").arg(getUserWorkDir(userName))));
                     return;
                 }
                 else{
@@ -454,7 +444,7 @@ void FTPSession::parsingQuery(QString query){
     }
     if(list[0]=="CDUP"){
         currentDirectory.cdUp();
-        sendToClient((QString("250 Command successful \"%1\" is a current directory").arg(currentDirectory.absolutePath())).replace("D:",""));
+        sendToClient((QString("250 Command successful \"%1\" is a current directory").arg(getUserWorkDir(userName))));
         return;
     }
     if(list[0]=="QUIT"){
@@ -463,13 +453,6 @@ void FTPSession::parsingQuery(QString query){
         //dynamic_cast<FTPServer*>(this->parent())->sessionClose(this->socketDescriptor());
         emit sessionClose(this->socketDescriptor());
         return;
-        // ЧТО  ТО НУЖНО ДЕЛАТЬ ЧТОБЫ ЗАКРЫТЬ ЭТУ СЕССИЮ
-        //######################################
-        //######################################
-        //######################################
-        //######################################
-        //######################################
-        //######################################
     }
     if(!cmdIsUnderstoot) sendToClient("500 Command is not recognized");
 
@@ -512,6 +495,7 @@ bool FTPSession::checkUserPassword(QString pass){
 
 QString FTPSession::getUserWorkDir(QString user){
     //return userName+"_work_directory";
+    qDebug()<<currentDirectory.absolutePath()<<userDir;
     return currentDirectory.absolutePath().replace(userDir,"");
 }
 
