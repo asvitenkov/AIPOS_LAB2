@@ -4,14 +4,17 @@
 #include <QTcpServer>
 #include "ftpsession.h"
 #include <QHash>
-#include <QtNetwork>
 
 class FTPServer : public QTcpServer
 {
-    Q_SLOTS
+
+    Q_OBJECT
+
 public:
-    FTPServer(QHostAddress _serverAdress, int port,QObject *parent = 0 );
-    void sessionClose(int _descriptor);
+    //FTPServer(QHostAddress _serverAdress, int port,QObject *parent = 0 );
+    FTPServer(QObject *parent = 0 );
+    //void sessionClose(int _descriptor);
+    void setServerAdress(QHostAddress _adress);
 
 private:
     void incomingConnection(int socketID);

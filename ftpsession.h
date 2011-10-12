@@ -17,9 +17,14 @@ class FTPServer;
 
 class FTPSession : public QTcpSocket
 {
-Q_OBJECT
+
+    Q_OBJECT
+
 public:
     FTPSession(QObject *parent = 0);
+    bool setCurrentDirectory(QString);
+    void setUserDir(QString userDirName);
+
 
 private slots:
     void readClient();
@@ -41,7 +46,8 @@ private:
     QList<int> pasvPort;
     QList<int> activPort;
     QDir currentDirectory;
-    bool setCurrentDirectory(QString);
+    QString userDir;
+
 
 signals:
     void sessionClose(int);

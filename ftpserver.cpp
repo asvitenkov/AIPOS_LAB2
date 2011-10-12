@@ -1,10 +1,11 @@
 #include "ftpserver.h"
 #include <QTcpSocket>
 
-FTPServer::FTPServer(QHostAddress _serverAdress, int port, QObject *parent): QTcpServer(parent), serverAdress(_serverAdress)
+//FTPServer::FTPServer(QHostAddress _serverAdress, int port, QObject *parent): QTcpServer(parent), serverAdress(_serverAdress)
+FTPServer::FTPServer(QObject *parent): QTcpServer(parent)
 {
-    //sessionsList.clear();
-    this->listen(QHostAddress::Any,port);
+    sessionsList.clear();
+    //this->listen(QHostAddress::Any,port);
     // нужна проверка, а не занят ли этот порт!!!!1
 //    $$$$$$$$$$$
 //    $$$$$$$$$$$
@@ -25,8 +26,13 @@ void FTPServer::incomingConnection(int socketID){
 }
 
 
-void FTPServer::sessionClose(int _descriptor){
+void FTPServer::sessionCloseSLOT(int _descriptor){
     if(sessionsList.contains(_descriptor))
        delete sessionsList[_descriptor];
     qDebug()<<"Session with descr "<<_descriptor<<" close";
+}
+
+
+void FTPServer::setServerAdress(QHostAddress _adress){
+    serverAdress = _adress;
 }

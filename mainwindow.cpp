@@ -12,7 +12,10 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    new FTPServer(QHostAddress("172.31.5.51"),21,this);
+    FTPServer *server = new FTPServer(this);
+    server->listen(QHostAddress::Any,21);
+    server->setServerAdress(QHostAddress("172.31.5.51"));
+
 
 
 
