@@ -28,7 +28,6 @@ MainWindow::MainWindow(QWidget *parent) :
 //        fileInfo=fileInfoList[i];
 //        qDebug()<<fileInfo.created().toString("MMM dd hh:mm")<<fileInfo.fileName();
 //    }
-
 }
 
 MainWindow::~MainWindow()
