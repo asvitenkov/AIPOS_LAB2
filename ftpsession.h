@@ -48,6 +48,8 @@ private:
     QList<int> activPort;
     QDir currentDirectory;
     QString userDir;
+    bool renameIsActive;
+    QFileInfo renameObj;
 
 
 signals:

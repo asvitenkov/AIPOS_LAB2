@@ -23,6 +23,7 @@ FTPSession::FTPSession(QObject *parent):QTcpSocket(parent)
     setUserDir("D:/");
     //setCurrentDirectory("D:\\TESTFTP");
     currentDirectory.setFilter(QDir::Dirs | QDir::Files );
+    renameIsActive = false;
 
 }
 
@@ -384,14 +385,14 @@ void FTPSession::parsingQuery(QString query){
         }
         if(dirName==".."){
             currentDirectory.cdUp();
-            sendToClient((QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName))));
+            sendToClient((QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName).replace("//","/"))));
             return;
         }
         if(dirName=="/"){
             // переход к корню
             //currentDirectory.setPath("D:");
             setUserDir(userDir);
-            sendToClient((QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName))));
+            sendToClient((QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName).replace("//","/"))));
             return;
         }
         if(dirName[0]=='/'){
@@ -402,7 +403,7 @@ void FTPSession::parsingQuery(QString query){
                 if(tmpDir.isReadable()){
                     // переход возможен
                     currentDirectory=tmpDir;
-                    sendToClient((QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName))));
+                    sendToClient((QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName).replace("//","/"))));
                     return;
                 }
                 else{
@@ -428,7 +429,7 @@ void FTPSession::parsingQuery(QString query){
             if(tmpDir.isReadable()){
                 // переход возможен
                 currentDirectory=tmpDir;
-                sendToClient(QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName)));
+                sendToClient(QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName).replace("//","/")));
                 return;
             }
             else{
@@ -495,7 +496,7 @@ void FTPSession::parsingQuery(QString query){
     }
     if(list[0]=="CDUP"){
         if(currentDirectory.absolutePath()!=userDir)currentDirectory.cdUp();
-        sendToClient((QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName))));
+        sendToClient((QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName).replace("//","/"))));
         return;
     }
     if(list[0]=="QUIT"){
@@ -602,18 +603,146 @@ void FTPSession::parsingQuery(QString query){
                     sendToClient(QString("250 %1 command successful").arg(list[0]));
                 }
                 else{
-                    qDebug()<<delFile.error();
+                    //qDebug()<<delFile.error();
+                    qDebug()<<delFile.errorString();
+                    switch(delFile.error()){
+                    case QFile::RemoveError:
+                        sendToClient(QString("500 Failed to delete file %1: file could not be removed").arg(filePath).replace("//","/"));
+                        break;
+                    case QFile::FatalError:
+                        sendToClient(QString("500 Failed to delete file %1: A fatal error").arg(filePath).replace("//","/"));
+                        break;
+                    default:
+                        sendToClient(QString("500 Failed to delete file %1: An unspecified error").arg(filePath).replace("//","/"));
+                        break;
+                    }
                 }
 
             }
             else{
                 // такой файл не существует
+                sendToClient(QString("550 \"/%1\" file not exist").arg(filePath).replace("//","/"));
             }
 
         }
         else{
             // аргумент пустой
             sendToClient("501 Error in parameters or arguments");
+        }
+        return;
+    }
+    if(list[0]=="RNFR"){
+        cmdIsUnderstoot = true;
+        QString targetName="";
+        for(int i=1;i<list.size();i++) targetName =targetName + " " + list[i];
+        targetName = targetName.trimmed().replace("\\","/");
+        while(targetName.indexOf("//")!=-1){
+            targetName = targetName.replace("//","/");
+        }
+
+        if(!targetName.isEmpty()){
+            // аргумент не пустой
+            // смотрим, путь относительный или абсолютный
+            QString tempName;
+            if(targetName[0]=='/'){
+                // абсолютный
+                tempName = QString(userDir + targetName).replace("//","/");
+            }
+            else{
+                // относительный
+                tempName = QString(currentDirectory.absolutePath()+"/"+targetName).replace("//","/");
+            }
+            //QDir tmpDir();
+            QFileInfo tmpFileInfo(tempName);
+            // нужно проверит, есть ли такая папка или файл
+            if(tmpFileInfo.exists()){
+                // объект есть
+                QString targetObj;
+                if(tmpFileInfo.isFile())targetObj="File";
+                else targetObj="Directory";
+                sendToClient(QString("350 "+targetObj+" exists, ready for destination name"));
+                renameIsActive = true;
+                renameObj = tmpFileInfo;
+            }
+            else{
+                // объекта нет
+                sendToClient("550 file/directory not found");
+            }
+
+        }
+        else{
+            // аргумент пуст
+            // отсылаем ошибку
+            sendToClient("501 Error in parameters or arguments");
+        }
+
+    }
+    if(list[0]=="RNTO"){
+        cmdIsUnderstoot =true;
+        if(renameIsActive){
+            // есть файл для реобразования
+            // получаем аргумент
+            QString targetName="";
+            for(int i=1;i<list.size();i++) targetName =targetName + " " + list[i];
+            targetName = targetName.trimmed().replace("\\","/");
+            while(targetName.indexOf("//")!=-1){
+                targetName = targetName.replace("//","/");
+            }
+            if(!targetName.isEmpty()){
+                // аргумент не пустой
+
+                QString tempName;
+                if(targetName[0]=='/'){
+                    // абсолютный
+                    tempName = QString(userDir + targetName).replace("//","/");
+                }
+                else{
+                    // относительный
+                    QDir tmpDir(currentDirectory);
+                    tmpDir.cdUp();
+                    tempName = QString(currentDirectory.absolutePath()+"/"+targetName).replace("//","/");
+                }
+
+                // проверить, может файл уже существует на который хотят переименовать
+                QFileInfo file(tempName);
+                if(file.exists()){
+                    // уже существует
+                    QString targetObj;
+                    if(renameObj.isFile())targetObj="File";
+                    else targetObj="Directory";
+                    sendToClient("553 "+targetObj+" alredy exists");
+                    renameIsActive = false;
+                }
+                else{
+                    // не существует
+                    // пробуем переименовать
+
+                    QDir tmpDir;
+                    if(tmpDir.rename(renameObj.absoluteFilePath(),tempName)){
+                        // успешно переименовали
+                        QString targetObj;
+                        if(renameObj.isFile())targetObj="File";
+                        else targetObj="Directory";
+                        sendToClient(QString("250 "+targetObj+" renamed successfully"));
+                        renameIsActive = false;
+                        renameObj.setFile(userDir);
+                    }
+                    else{
+                        // переименовать не удалось
+                        sendToClient("450 Internal error renaming the file");
+                        renameIsActive = false;
+                    }
+                }
+            }
+            else{
+                // аргумент пустой
+                sendToClient("501 Error in parameters or arguments");
+                renameIsActive = false;
+            }
+        }
+        else{
+            // неправильный порядок следовани команд
+            sendToClient("503 incorrect sequence of commands");
         }
         return;
     }
