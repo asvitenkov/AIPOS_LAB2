@@ -52,12 +52,14 @@ void FTPSession::parsingQuery(QString query){
     bool cmdIsUnderstoot = false;
 
 
-    // О“ЗЌМ Ж™ ГЋ ГђЖЊЭ ЛЋНЂО„ Т’ЙђRЪ Й‘РЋМњИЋГЂОЌЬ… РЋС’Щ Ж МЋД€Ш…ТЉЙ… Р…С…Н…ОЌЬ‰ Н…ОџУњ О“ЗЌМ РЋУЋК РЋТЊП’С…Уњ Д„Г Ж Ш’МЉ
+    // НУЖНО ЕЩЁ ВО ВРЕМЯ КОМАНД СТИРАТЬ ИСПОЛЬЗОВАННЫЕ ПОРТЫ И ЛОГИЧЕСКИЕ ПЕРЕМЕННЫЙ МЕНЯТЬ НУЖНО ПОТОМ ПОСМОТРЕТЬ ГДЕ И ЧТО
+
 
     if(list[0]=="USER"){
         cmdIsUnderstoot = true;
         if(!loginIsOk){
-            // бЈІп±ЁиЎ¶й¦ ж№ё оЈ вј«м€            if (checkUserName(list[1])){
+            // авторизации ещё не было
+            if (checkUserName(list[1])){
                 loginIsOk = true;
                 userName = list[1];
                 sendToClient("331 Password required for " + userName+" need password");
@@ -65,22 +67,23 @@ void FTPSession::parsingQuery(QString query){
 
         }
         else{
-            // бЈІп±ЁиЎ¶йЅ н±ћні вј«нћєнє рђЇЇу«ћ бЈІп±Ёи©°пЈ уЅІї гі®сЇ§ сЎҐЉ            sendToClient("503 user "+userName+" is already authorized");
+            // авторизация уже была, попытка авторизироваться второй раз
+            sendToClient("503 user "+userName+" is already authorized");
         }
         return;
     }
     if(list[0]=="PASS"){
         cmdIsUnderstoot = true;
         if(loginIsOk){
-            // рђ±ЁпЂІнћєн±Єп­ оҐ  pass рђЇ±мЈ лЇ¬б®¤ user
+            // принята команда pass после команды user
             if(list.size()>=2)
                 if(checkUserPassword(list[1])){
-                    // рђЎ°п¬ј рђ±ЁпЂІ
+                    // пароль принят
                     sendToClient("230 user "+userName+" logged in");
                     passIsOk = true;
                 }
                 else{
-                    // рђЎ°п¬ј оЈ рђ±ЁпЂІ
+                    // пароль не принят
                     sendToClient("530 Not logged in, user or password incorrect!");
                 }
             else{
@@ -88,7 +91,7 @@ void FTPSession::parsingQuery(QString query){
             }
         }
         else{
-            //  рђ±ЁпЂІнћєн±Єп­ оҐ  pass в¦§ лЇ¬б®¤ user
+            //  принята команда pass без команды user
             sendToClient("503 First enter a user name");
         }
         return;
@@ -122,7 +125,7 @@ void FTPSession::parsingQuery(QString query){
     //    if(list[0]=="PASV"){
     //        cmdIsUnderstoot = true;
     //        passiveMode =true;
-    //        // оґ¦о¬ пі®т¬ЎІ бҐ°жЇ жЎЇп±І
+    //        // нужно отослать адрес и порт
     ////        pasvPort[0]=qrand()%255+1;
     ////        pasvPort[1]=qrand()%255;
     ////        sendToClient("227 Entering Passive mode ("+peerAddress().toString().replace(".",",")+
@@ -151,7 +154,8 @@ void FTPSession::parsingQuery(QString query){
         cmdIsUnderstoot = true;
         QRegExp texp("[0-9]{1,3}\\,[0-9]{1,3}\\,[0-9]{1,3}\\,[0-9]{1,3}\\,[0-9]{1,3}\\,[0-9]{1,3}");
         if((list[1]).contains(texp)){
-            // лЇ°с¦«Іој© б±Јн±¶н¶­ић           activMode = true;
+            // корректный аргумент
+            activMode = true;
             QList<int> lst;
             QStringList listAdress = (list[1]).split(",");
             for(int i=0; i<listAdress.size();i++) lst.push_back((listAdress[i].toInt()));
@@ -159,40 +163,47 @@ void FTPSession::parsingQuery(QString query){
             sendToClient("200 Port command successful");
         }
         else{
-            // о¦Єп±°ж«Іој© б±Јн±¶н¶­ић           sendToClient("501 Error in parameters or arguments");
+            // некорректный аргумент
+            sendToClient("501 Error in parameters or arguments");
         }
         return;
     }
     if(list[0]=="LIST"){
 
-        // оґ¦о¬ рђ¦°жҐ уєЎ±рђ©±пЁ нµ†нє«п  нќ†н№­нµїн±¬б·Ёж§Љ        // е¬ї оЎ·б¬  оґ¦о¬ т«Ї­нµ¦нґіс©±®гЎІ піЇсЎЈ«ж­і й®ґп±¬б·Ё
-        // жІ«жЎҐтіє б±Јн±¶н¶­рЄЎІмЎ­бЄ оґ¦оћ й®ґп±¬б·Ё рђ¬ б±Јн±¶н¶­у±€Љ        // О“ЗЌМ РђП‚ЖђЙ’Ъ¬ нћїнѕ НЋЗ…К М€ Н› Р…С…ЕЂУњ?
-        // Г›РЋМЌЖЌнћїнѕ М€ ЛЋНЂО„нћїнѕ РЋС’ Й‹Ж ГЉМћЧЁЛ РЂТ‘Й‚О›З С…З€Кї
+        // нужно передать список файлов с информацией
+        // для начала нужно сконфигурировать отправляемую информацию
+        // если есть аргумент, то нам нужна информация по аргументу
+
+        // НУЖНО ПРОВЕРИТЬ, А МОЖЕМ ЛИ МЫ ПЕРЕДАТЬ?
+        // ВЫПОЛНЕНА ЛИ КОМАНДА ПОРТ ИЛИ ВКЛЮЧЁН ПАССИВНЫЙ РЕЖИМ?
         // #######################################################
         cmdIsUnderstoot = true;
 
         FTPDataOut *pDataOut;
 
         if(!activPort.isEmpty() && activMode && activPort.size()==6){
-            // б«ІйЈ­гЎ°ж§ЁкЎЁ рђЇ°ић           QString strAddr = "%1.%2.%3.%4";
+            // активные режим и порт
+            QString strAddr = "%1.%2.%3.%4";
             strAddr=strAddr.arg(activPort[0]).arg(activPort[1]).arg(activPort[2]).arg(activPort[3]);
             FTPDataOut *dataOut = new FTPDataOut(QHostAddress(strAddr),activPort[4]*256+activPort[5],20,this);
             pDataOut = dataOut;
         }
         else if(passiveMode && pasvPort.size()==2){
-            // рђЎ±т©Ј­зЎ°ж§ЁкЎЁ пі®т¬Ў­зЎЇп±І
+            // пассивный режим и отосланый порт
             FTPDataOut *dataOut = new FTPDataOut(this->peerAddress(),this->peerPort(),pasvPort[0]*256+pasvPort[1],this);
             pDataOut = dataOut;
         }
         else{
-            //о¦ЇсЎЈЁмЅ­бЅ рђЇ±м¦¤пЈ у¦¬јоЇ±уєЎЄп­ оўЉ            sendToClient("503 incorrect command sequence");
+            //неправильная последовательность команд
+            sendToClient("503 incorrect command sequence");
             return;
         }
 
 
         QString listStr;
         if(list.size()==2){
-            // жІІ б±Јн±¶н¶­и­Ї            QFileInfoList fileInfoList = currentDirectory.entryInfoList();
+            // есть аргумент
+//            QFileInfoList fileInfoList = currentDirectory.entryInfoList();
 //            QFileInfo fileInfo;
             QDateTime date;
 
@@ -231,7 +242,8 @@ void FTPSession::parsingQuery(QString query){
 
         }
         else if(list.size()==1){
-            // в¦§ б±Јн±¶н¶­ућ€            sendToClient("150 Opening data channel for directory list");
+            // без аргумента
+            sendToClient("150 Opening data channel for directory list");
             QFileInfoList fileInfoList = currentDirectory.entryInfoList();
             QFileInfo fileInfo;
             QDateTime date;
@@ -271,34 +283,40 @@ void FTPSession::parsingQuery(QString query){
     }
     if(list[0]=="NLST"){
 
-        // оґ¦о¬ рђ¦°жҐ уєЎ±рђ©±пЁ нµ†нє«п  нќ†н№­нµїн±¬б·Ёж§Љ        // е¬ї оЎ·б¬  оґ¦о¬ т«Ї­нµ¦нґіс©±®гЎІ піЇсЎЈ«ж­і й®ґп±¬б·Ё
-        // жІ«жЎҐтіє б±Јн±¶н¶­рЄЎІмЎ­бЄ оґ¦оћ й®ґп±¬б·Ё рђ¬ б±Јн±¶н¶­у±€Љ        // О“ЗЌМ РђП‚ЖђЙ’Ъ¬ нћїнѕ НЋЗ…К М€ Н› Р…С…ЕЂУњ?
-        // Г›РЋМЌЖЌнћїнѕ М€ ЛЋНЂО„нћїнѕ РЋС’ Й‹Ж ГЉМћЧЁЛ РЂТ‘Й‚О›З С…З€Кї
+        // нужно передать список файлов с информацией
+        // для начала нужно сконфигурировать отправляемую информацию
+        // если есть аргумент, то нам нужна информация по аргументу
+
+        // НУЖНО ПРОВЕРИТЬ, А МОЖЕМ ЛИ МЫ ПЕРЕДАТЬ?
+        // ВЫПОЛНЕНА ЛИ КОМАНДА ПОРТ ИЛИ ВКЛЮЧЁН ПАССИВНЫЙ РЕЖИМ?
         // #######################################################
         cmdIsUnderstoot = true;
 
         FTPDataOut *pDataOut;
 
         if(!activPort.isEmpty() && activMode && activPort.size()==6){
-            // б«ІйЈ­гЎ°ж§ЁкЎЁ рђЇ°ић           QString strAddr = "%1.%2.%3.%4";
+            // активные режим и порт
+            QString strAddr = "%1.%2.%3.%4";
             strAddr=strAddr.arg(activPort[0]).arg(activPort[1]).arg(activPort[2]).arg(activPort[3]);
             FTPDataOut *dataOut = new FTPDataOut(QHostAddress(strAddr),activPort[4]*256+activPort[5],20,this);
             pDataOut = dataOut;
         }
         else if(passiveMode && pasvPort.size()==2){
-            // рђЎ±т©Ј­зЎ°ж§ЁкЎЁ пі®т¬Ў­зЎЇп±І
+            // пассивный режим и отосланый порт
             FTPDataOut *dataOut = new FTPDataOut(this->peerAddress(),this->peerPort(),pasvPort[0]*256+pasvPort[1],this);
             pDataOut = dataOut;
         }
         else{
-            //о¦ЇсЎЈЁмЅ­бЅ рђЇ±м¦¤пЈ у¦¬јоЇ±уєЎЄп­ оўЉ            sendToClient("503 incorrect command sequence");
+            //неправильная последовательность команд
+            sendToClient("503 incorrect command sequence");
             return;
         }
 
 
         QString listStr;
         if(list.size()==2){
-            // жІІ б±Јн±¶н¶­и­Ї            QFileInfoList fileInfoList = currentDirectory.entryInfoList();
+            // есть аргумент
+//            QFileInfoList fileInfoList = currentDirectory.entryInfoList();
 //            QFileInfo fileInfo;
             QDateTime date;
 
@@ -324,7 +342,8 @@ void FTPSession::parsingQuery(QString query){
 
         }
         else if(list.size()==1){
-            // в¦§ б±Јн±¶н¶­ућ€            sendToClient("150 Opening data channel for directory list");
+            // без аргумента
+            sendToClient("150 Opening data channel for directory list");
             QFileInfoList fileInfoList = currentDirectory.entryInfoList();
             QFileInfo fileInfo;
             QDateTime date;
@@ -369,28 +388,32 @@ void FTPSession::parsingQuery(QString query){
             return;
         }
         if(dirName=="/"){
-            // рђ¦°ж¶®вЎЄ лЇ°ојЉ            //currentDirectory.setPath("D:");
+            // переход к корню
+            //currentDirectory.setPath("D:");
             setUserDir(userDir);
             sendToClient((QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName))));
             return;
         }
         if(dirName[0]=='/'){
-            // бў±п¬ѕу®ј© рђґІ
+            // абсолютный путь
             QDir tmpDir(userDir+dirName);
             if(tmpDir.exists()){
-                // уЎ«  е©°ж«Іп±Ё жІІ рђ±®г¦°жЄ¬ жІІ м¦ иЎ­ж§ еЇ±уґ­Љ                if(tmpDir.isReadable()){
-                    // рђ¦°ж¶®вЎўпЁ¬п§Ґл€                    currentDirectory=tmpDir;
+                // такая директория есть проверяем, есть ли к ней доступ
+                if(tmpDir.isReadable()){
+                    // переход возможен
+                    currentDirectory=tmpDir;
                     sendToClient((QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName))));
                     return;
                 }
                 else{
-                    // рђ¦°ж¶®вЎ­жЈ®и­®з¦­
+                    // переход невозможен
                     sendToClient(QString("550 CWD failed \"%1\" directory is not readable").arg(dirName));
                     return;
                 }
             }
             else{
-                // уЎ«®зЎ¤й±Ґлі®с©¦ оЈ тґєҐтіЈіж°Љ                sendToClient(QString("550 CWD failed \"%1\" directory not found").arg(dirName));
+                // такой директории не существует
+                sendToClient(QString("550 CWD failed \"%1\" directory not found").arg(dirName));
                 return;
             }
         }
@@ -401,19 +424,22 @@ void FTPSession::parsingQuery(QString query){
 //        filters<<dirName;
 //        QFileInfoList fileInfoList = currentDirectory.entryInfoList(filters,QDir::Dirs);
         if(tmpDir.exists()){
-            // уЎ«  е©°ж«Іп±Ё жІІ рђ±®г¦°жЄ¬ жІІ м¦ иЎ­ж§ еЇ±уґ­Љ            if(tmpDir.isReadable()){
-                // рђ¦°ж¶®вЎўпЁ¬п§Ґл€                currentDirectory=tmpDir;
+            // такая директория есть проверяем, есть ли к ней доступ
+            if(tmpDir.isReadable()){
+                // переход возможен
+                currentDirectory=tmpDir;
                 sendToClient(QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName)));
                 return;
             }
             else{
-                // рђ¦°ж¶®вЎ­жЈ®и­®з¦­
+                // переход невозможен
                 sendToClient(QString("550 CWD failed \"%1\" directory is not readable").arg(dirName));
                 return;
             }
         }
         else{
-            // уЎ«®зЎ¤й±Ґлі®с©¦ оЈ тґєҐтіЈіж°Љ            sendToClient(QString("550 CWD failed \"%1\" directory not found").arg(dirName));
+            // такой директории не существует
+            sendToClient(QString("550 CWD failed \"%1\" directory not found").arg(dirName));
             return;
         }
         return;
@@ -433,32 +459,37 @@ void FTPSession::parsingQuery(QString query){
         }
         QString tempName;
         if(!dirName.isEmpty()){
-            // й­ї тЇІ§еЎўб¦¬п§ рђЎЇл¦ й¬Ё рђґІжЎ­гЎЇнІ‹ні®г€            if(dirName[0]=='/'){
-                // бў±п¬ѕу®ј© рђґІ
+            // имя сосздаваемой папки или пути не пустое
+            if(dirName[0]=='/'){
+                // абсолютный путь
                 tempName = userDir.replace("/","")+dirName;
             }
             else{
-                // пі­пІЁу¦¬јој© рђґІ
+                // относительный путь
                 tempName = QString(currentDirectory.absolutePath()+"/"+dirName).replace("//","/");
             }
         }
         else{
-            // б±Јн±¶н¶­рЎ°іт°€            sendToClient("501 Error in parameters or arguments");
+            // аргумент пуст
+            sendToClient("501 Error in parameters or arguments");
             return;
         }
         QDir tempDir(tempName);
         if(!tempDir.exists()){
-            // уЎ«®д¬ лЎІб¬®дћ о¦І
-            // рђ±®вґҐкЎҐд¬ тЇЁ¤біј
+            // такого каталога нет
+            // пробуем его создать
             if(currentDirectory.mkpath(tempName)){
-                // лЎІб¬®бЎ±пЁ¤б«Љ                sendToClient(QString("257 \"%1\" created successfully").arg(tempName).replace(userDir,""));
+                // каталог создан
+                sendToClient(QString("257 \"%1\" created successfully").arg(tempName).replace(userDir,""));
             }
             else{
-                // лЎІб¬®бЎ­гЎ±пЁ¤б«Љ                sendToClient(QString("550 \"/%1\" directory not exist").arg(tempName));
+                // каталог не создан
+                sendToClient(QString("550 \"/%1\" directory not exist").arg(tempName));
             }
         }
         else{
-            // уЎ«®зЎЄбі мЇЈ тґєҐтіЈіж° н±ћніЉ            sendToClient("550 Directory alredy exists");
+            // такой каталог существует уже
+            sendToClient("550 Directory alredy exists");
         }
         return;
     }
@@ -486,42 +517,56 @@ void FTPSession::parsingQuery(QString query){
         }
         QString tempName;
         if(!dirName.isEmpty()){
-            // й­ї тЇІ§еЎўб¦¬п§ рђЎЇл¦ й¬Ё рђґІжЎ­гЎЇнІ‹ні®г€            if(dirName[0]=='/'){
-                // бў±п¬ѕу®ј© рђґІ
+            // имя сосздаваемой папки или пути не пустое
+            if(dirName[0]=='/'){
+                // абсолютный путь
                 tempName = userDir.replace("/","")+dirName;
             }
             else{
-                // пі­пІЁу¦¬јој© рђґІ
+                // относительный путь
                 tempName = QString(currentDirectory.absolutePath()+"/"+dirName).replace("//","/");
             }
 
-            // оґ¦о¬ рђ±®г¦°йіј, тґєҐтіЈіж° м¦ рђЎЇлћЉ
+            // нужно проверить, существует ли папка
+
             QDir tmpDir(tempName);
             if(tmpDir.exists()){
-                // е©°ж«Іп±Ё тґєҐтіЈіж°Љ                // рђ±®г¦°йіј, жІІ м¦ еЇ±нІЏнґЇ иЎ¤й±Ґлі®с©¦Љ                if(tmpDir.isReadable()){
-                    // еЇ±уґ­ иЎЄбі мЇЈсЎ¦±ує€                    // рђјІб¦¬тЅЎіеЎ«йіј лЎІб¬®б€                    if(tmpDir.rmdir(tempName)){
-                        // лЎІб¬®бЎіеЎ«л€                        sendToClient(QString("250 %1 command seccussful").arg(list[0]));
+                // директория существует
+                // проверить, есть ли досутуп к директории
+                if(tmpDir.isReadable()){
+                    // доступ к каталогу есть
+                    // пытаемся удалить каталог
+                    if(tmpDir.rmdir(tempName)){
+                        // каталог удалён
+                        sendToClient(QString("250 %1 command seccussful").arg(list[0]));
                     }
                     else{
-                        // лЎІб¬®бЎ­гЎіеЎ«л€                        // н±ўнѕ кЄ рђґ±рЎ¬Ё лЎІб¬®бЎ«йў® п№Ёв«  аЎ·кЎІмЎ¤сґ¤®к€                        if((tmpDir.entryList(QStringList("*"),QDir::Dirs| QDir::Files)).isEmpty()){
-                            // лЎІб¬®бЎЇнІ‹ні®з€                            sendToClient(QString("550 Command %1 is not executed").arg(list[0]));
+                        // каталог не удалён
+                        // узнаём, пуст ли каталог либо ошибка в чём то другом
+                        if((tmpDir.entryList(QStringList("*"),QDir::Dirs| QDir::Files)).isEmpty()){
+                            // каталог пустой
+                            sendToClient(QString("550 Command %1 is not executed").arg(list[0]));
                         }
                         else{
-                            //лЎІб¬®бЎ­гЎЇнІ‹ні®з€                            sendToClient(QString("550 Command %1 is not executed: directory %2 is not empty").arg(list[0]).arg(tmpDir.absolutePath().replace(userDir,"").replace("//","/")));
+                            //каталог не пустой
+                            sendToClient(QString("550 Command %1 is not executed: directory %2 is not empty").arg(list[0]).arg(tmpDir.absolutePath().replace(userDir,"").replace("//","/")));
                         }
                     }
                 }
                 else{
-                    // еЇ±уґ°  иЎЄбі мЇЈсЎ®Ґић                   sendToClient(QString("550 CWD failed \"%1\" directory is not readable").arg(dirName).replace("//","/"));
+                    // доступа к каталогу нет
+                    sendToClient(QString("550 CWD failed \"%1\" directory is not readable").arg(dirName).replace("//","/"));
                 }
 
             }
             else{
-                // е©°ж«Іп±Ё оЈ тґєҐтіЈіж°Љ                sendToClient(QString("550 CWD failed \"%1\" directory not found").arg(dirName).replace("//","/"));
+                // директория не существует
+                sendToClient(QString("550 CWD failed \"%1\" directory not found").arg(dirName).replace("//","/"));
             }
         }
         else{
-            // б±Јн±¶н¶­рЎ°іт°€            sendToClient("501 Error in parameters or arguments");
+            // аргумент пуст
+            sendToClient("501 Error in parameters or arguments");
         }
         return;
 
@@ -537,18 +582,22 @@ void FTPSession::parsingQuery(QString query){
         }
         QString tempName;
         if(!filePath.isEmpty()){
-            // б±Јн±¶н¶­рЎ®Ґ рђґ±ић           // рђ±®г¦°йіј, бў±п¬ѕу®ј© й¬Ё пі­пІЁу¦¬јој© рђґІ йІЇп¬јиґҐуІЅЉ            if(filePath[0]=='/'){
-                // бў±п¬ѕу®ј© рђґІ
+            // аргумент не пуст
+            // проверить, абсолютный или относительный путь используется
+            if(filePath[0]=='/'){
+                // абсолютный путь
                 tempName = userDir.replace("/","")+filePath;
             }
             else{
-                // пі­пІЁу¦¬јој© рђґІ
+                // относительный путь
                 tempName = QString(currentDirectory.absolutePath()+"/"+filePath).replace("//","/");
             }
             QFile delFile(tempName);
-            // рђ±®г¦°жЄ¬ тґєҐтіЈіж° м¦ нµ†нє«
+            // проверяем, существует ли файл
             if(delFile.exists()){
-                // нµ†нє« тґєҐтіЈіж°Љ                // рђ±®г¦°жЄ¬ жІІ м¦ иЎ­ж­і еЇ±уґ­Љ                //delFile.isReadable()
+                // файл существует
+                // проверяем, есть ли к нему доступ
+                //delFile.isReadable()
                 if(delFile.remove()){
                     sendToClient(QString("250 %1 command successful").arg(list[0]));
                 }
@@ -558,11 +607,12 @@ void FTPSession::parsingQuery(QString query){
 
             }
             else{
-                // уЎ«®зЎґбЄ« оЈ тґєҐтіЈіж°Љ            }
+                // такой файл не существует
+            }
 
         }
         else{
-            // б±Јн±¶н¶­рЎ°ітіЇ©
+            // аргумент пустой
             sendToClient("501 Error in parameters or arguments");
         }
         return;
@@ -628,6 +678,6 @@ void FTPSession::setUserDir(QString userDirName){
 
 
 bool FTPSession::checkPermissionCreateDir(QString _userName){
-    // уґ° аЎЁе¦ мЈ лЎЄбЅ­у¬ЎЇсЇЈҐс«ћ о¬ рђЇЄнћєн±­ж° о©·ж¤®=)
+    // тут в идеале какая-то проверка но пока нет ничего=)
     return true;
 }
