@@ -8,6 +8,10 @@
 #include <QAbstractSocket>
 #include "ftpserver.h"
 #include <QDir>
+#include <QFile>
+
+
+
 
 FTPSession::FTPSession(QObject *parent):QTcpSocket(parent)
 {
@@ -372,9 +376,7 @@ void FTPSession::parsingQuery(QString query){
     if(list[0]=="CWD"){
         cmdIsUnderstoot = true;
         QString dirName="";
-        //if(!list.isEmpty()) dirName = (list[0]).trimmed();
         for(int i=1;i<list.size();i++) dirName =dirName + " " + list[i];
-        //dirName = dirName.trimmed().replace("\\","/").replace("//","/");
         dirName = dirName.trimmed().replace("\\","/");
         while(dirName.indexOf("//")!=-1){
             dirName = dirName.replace("//","/");
@@ -746,9 +748,39 @@ void FTPSession::parsingQuery(QString query){
         }
         return;
     }
+    if(list[0]=="RETR"){
+        cmdIsUnderstoot = true;
+        QString strAddr = "%1.%2.%3.%4";
+        strAddr=strAddr.arg(activPort[0]).arg(activPort[1]).arg(activPort[2]).arg(activPort[3]);
+        FTPDataOut *dataOut = new FTPDataOut(QHostAddress(strAddr),activPort[4]*256+activPort[5],20,this);
+
+        QString fileName="";
+        for(int i=1;i<list.size();i++) fileName =fileName + " " + list[i];
+        fileName = fileName.trimmed().replace("\\","/");
+        while(fileName.indexOf("//")!=-1){
+            fileName = fileName.replace("//","/");
+        }
+
+        QString filePath;
+        filePath = QString(currentDirectory.absolutePath()+"/"+fileName).replace("//","/");
+        QFile *file = new QFile(filePath);
+        sendToClient("150 Opening data channel for file transfer");
+        file->open(QFile::ReadOnly);
+        if(file->isReadable()){
+            // файл можно прочитать
+            connect(dataOut,SIGNAL(ftansferFileCompleteSeccessful()),this,SLOT(transferFileCompleteSlot()));
+            dataOut->sendBinaryData(file);
+        }
+        else{
+            sendToClient("550 can't access file");
+        }
+
+        return;
+    }
     if(!cmdIsUnderstoot) sendToClient("500 Command is not recognized");
 
 }
+
 
 
 
@@ -763,11 +795,13 @@ void FTPSession::sendToClient(QString data){
 
 
 
+
 bool FTPSession::checkUserName(QString name){
     if(name=="anonymous")
         isAnonymous = true;
     return true;
 }
+
 
 bool FTPSession::checkUserPassword(QString pass){
     if(isAnonymous){
@@ -786,10 +820,12 @@ bool FTPSession::checkUserPassword(QString pass){
 
 
 
+
 QString FTPSession::getUserWorkDir(QString user){
     //return userName+"_work_directory";
     return currentDirectory.absolutePath().replace(userDir,"");
 }
+
 
 
 bool FTPSession::setCurrentDirectory(QString dirName){
@@ -800,13 +836,21 @@ bool FTPSession::setCurrentDirectory(QString dirName){
 }
 
 
+
 void FTPSession::setUserDir(QString userDirName){
     userDir = userDirName;
     currentDirectory.setPath(userDir);
 }
 
 
+
 bool FTPSession::checkPermissionCreateDir(QString _userName){
     // тут в идеале какая-то проверка но пока нет ничего=)
     return true;
+}
+
+
+void FTPSession::transferFileCompleteSlot(){
+    sendToClient("226 Transfer ok");
+
 }

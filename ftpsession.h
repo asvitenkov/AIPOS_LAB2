@@ -11,8 +11,6 @@
 #include <QFileInfoList>
 #include "ftpdataout.h"
 
-//#include "ftpserver.h"
-
 class FTPServer;
 
 class FTPSession : public QTcpSocket
@@ -55,6 +53,8 @@ private:
 signals:
     void sessionClose(int);
 
+public slots:
+    void transferFileCompleteSlot();
 
 };
 

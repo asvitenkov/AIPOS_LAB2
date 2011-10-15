@@ -5,6 +5,7 @@
 #include <QHostAddress>
 #include <QString>
 #include <QByteArray>
+#include <QFile>
 
 class FTPDataOut : public QTcpSocket
 {
@@ -14,10 +15,11 @@ public:
     //FTPDataOut(QObject *parent = 0);
     void sendTextData(QString _data);
     bool setPort(int _port);
+    void sendBinaryData(QFile *file);
 
 
 signals:
-
+    void ftansferFileCompleteSeccessful();
 
 public slots:
     void sendTextDataSlot();
