@@ -10,6 +10,10 @@
 class FTPDataOut : public QTcpSocket
 {
     Q_OBJECT
+
+
+    static const qint64 blockSize = 8192*2;
+
 public:
     FTPDataOut(QHostAddress _hostAdress, int _hostPort, int _localPort,QObject *parent = 0);
     //FTPDataOut(QObject *parent = 0);
@@ -19,15 +23,22 @@ public:
 
 
 signals:
-    void ftansferFileCompleteSeccessful();
+    void tansferFileCompleteSeccessfulSignal();
 
 public slots:
     void sendTextDataSlot();
+
+private slots:
+    void binaryDataWrittenSlot(qint64);
 
 private:
     QHostAddress hostAdress;
     int hostPort;
     QString data;
+    bool bytesAlredyWritten;
+    QFile *writtenFile;
+
+
 };
 
 #endif // FTPDATAOUT_H

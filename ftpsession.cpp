@@ -768,7 +768,7 @@ void FTPSession::parsingQuery(QString query){
         file->open(QFile::ReadOnly);
         if(file->isReadable()){
             // файл можно прочитать
-            connect(dataOut,SIGNAL(ftansferFileCompleteSeccessful()),this,SLOT(transferFileCompleteSlot()));
+            connect(dataOut,SIGNAL(tansferFileCompleteSeccessfulSignal()),this,SLOT(transferFileCompleteSlot()));
             dataOut->sendBinaryData(file);
         }
         else{

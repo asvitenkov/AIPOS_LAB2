@@ -1,5 +1,6 @@
 #include "ftpdataout.h"
 #include <QDebug>
+#include <QFtp>
 
 FTPDataOut::FTPDataOut(QHostAddress _hostAdress, int _hostPort, int _localPort, QObject *parent) :
     QTcpSocket(parent), hostAdress(_hostAdress), hostPort(_hostPort)
@@ -8,6 +9,7 @@ FTPDataOut::FTPDataOut(QHostAddress _hostAdress, int _hostPort, int _localPort, 
     setLocalPort(_localPort);
     setLocalAddress(_hostAdress);
     connectToHost(hostAdress,hostPort,QIODevice::ReadWrite);
+    bytesAlredyWritten = false;
 }
 
 
@@ -24,33 +26,36 @@ void FTPDataOut::sendTextData(QString _data){
 }
 
 void FTPDataOut::sendTextDataSlot(){
-    //qDebug()<<"FTPDataOut::sendTextDataSlot()";
     write(QByteArray(data.toUtf8()));
 }
 
-
 void FTPDataOut::sendBinaryData(QFile *file){
-    //file.open(QFile::ReadOnly);
-        QDataStream read(file);
-        int lBytes = 0;
-        char * ch;
-        ch = (char*)malloc(sizeof(char) * 1024);
-        ch[1023] = '\0';
-        while(!read.atEnd()){
-          int l = read.readRawData(ch, sizeof(char)*1023);
-          QByteArray ba(ch, sizeof(char)*l);
+    if(file) writtenFile = file;
+    connect(this,SIGNAL(bytesWritten(qint64)),this,SLOT(binaryDataWrittenSlot(qint64)));
+    binaryDataWrittenSlot(0);
+}
 
-          lBytes += write(ba, sizeof(char)*l);
-          //flush();
-          if (-1 == lBytes){
-            qWarning() << "Error";
-            //close(); //Закрываем устройство сокета
-            return;
-          }
-          //float procentage = ((float)lBytes / package.filelength) * 100;
-          //emit setProcentage((int)procentage);
-        }//while(!readEnd())
-        free((void*)ch);
+void FTPDataOut::binaryDataWrittenSlot(qint64 bytes){
+    qDebug()<<bytesToWrite();
+    char buffer[blockSize];
+    if(!writtenFile->atEnd()){
+        qint64 sizeRead = writtenFile->read(buffer, blockSize);
+        if (sizeRead > 0)
+        {
+            qint64 sizeWrite = 0;
+            do
+            {
+                qint64 size = write(buffer + sizeWrite, sizeRead - sizeWrite);
+
+                if (size < 0)
+                    return;
+                sizeWrite += size;
+            } while (sizeWrite < sizeRead);
+        }
+    }
+    else{
+        disconnect(this,SIGNAL(bytesWritten(qint64)),this,SLOT(binaryDataWrittenSlot(qint64)));
+        emit tansferFileCompleteSeccessfulSignal();
         close();
-        qDebug()<<"FILE END";
+    }
 }
