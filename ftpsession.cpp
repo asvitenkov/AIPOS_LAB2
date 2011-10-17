@@ -25,9 +25,12 @@ FTPSession::FTPSession(QObject *parent):QTcpSocket(parent)
     pasvPort.push_back(0);
     pasvPort.push_back(0);
     setUserDir("D:/");
+    //setUserDir(QString::fromLocal8Bit("D:/установочные файлы/программы/Среды разработки программ и SDK//"));
     //setCurrentDirectory("D:\\TESTFTP");
     currentDirectory.setFilter(QDir::Dirs | QDir::Files );
     renameIsActive = false;
+    textOut = NULL;
+    binaryOut = NULL;
 
 }
 
@@ -184,19 +187,15 @@ void FTPSession::parsingQuery(QString query){
         // #######################################################
         cmdIsUnderstoot = true;
 
-        FTPDataOut *pDataOut;
-
         if(!activPort.isEmpty() && activMode && activPort.size()==6){
             // активные режим и порт
             QString strAddr = "%1.%2.%3.%4";
             strAddr=strAddr.arg(activPort[0]).arg(activPort[1]).arg(activPort[2]).arg(activPort[3]);
-            FTPDataOut *dataOut = new FTPDataOut(QHostAddress(strAddr),activPort[4]*256+activPort[5],20,this);
-            pDataOut = dataOut;
+            textOut = new FTPDataOut(QHostAddress(strAddr),activPort[4]*256+activPort[5],20,this);
         }
         else if(passiveMode && pasvPort.size()==2){
             // пассивный режим и отосланый порт
-            FTPDataOut *dataOut = new FTPDataOut(this->peerAddress(),this->peerPort(),pasvPort[0]*256+pasvPort[1],this);
-            pDataOut = dataOut;
+
         }
         else{
             //неправильная последовательность команд
@@ -206,52 +205,16 @@ void FTPSession::parsingQuery(QString query){
 
 
         QString listStr;
-        if(list.size()==2){
-            // есть аргумент
-//            QFileInfoList fileInfoList = currentDirectory.entryInfoList();
-//            QFileInfo fileInfo;
-            QDateTime date;
-
-            QStringList filters;
-            filters<<list[1];
-            QFileInfoList fileInfoList = currentDirectory.entryInfoList(filters,QDir::Dirs | QDir::Files);
-            QFileInfo fileInfo;
-            if(!fileInfoList.isEmpty()){
-                sendToClient("150 Opening data channel for directory list");
-                listStr.clear();
-                fileInfo=fileInfoList.takeFirst();
-                if(fileInfo.isDir()) listStr+=("d");
-                else listStr+="-";
-                if(fileInfo.permission(QFile::ReadOwner)) listStr+="r";
-                else listStr+="-";
-                if(fileInfo.permission(QFile::WriteOwner)) listStr+="w";
-                else listStr+="-";
-                if(fileInfo.permission(QFile::ExeOwner)) listStr+="x";
-                else listStr+="-";
-                listStr+="------";
-                listStr+=" 1 user group ";
-                listStr+=QString::number(fileInfo.size());
-                date=fileInfo.created();
-                listStr+=" Aug 01 15:59 ";
-                listStr+=fileInfo.fileName();
-                listStr+="\r\n";
-                pDataOut->sendTextData(listStr);
-                //pDataOut->sendTextData("end_of_file\r\n");
-                sendToClient("226 Transfer complete");
-            }
-            else{
-                sendToClient(QString("550 Directory \"%1\" is not found").arg(list[1]).replace("//","/"));
-            }
-            pDataOut->close();
-            return;
-
-        }
-        else if(list.size()==1){
+        if(list.size()==1){
             // без аргумента
             sendToClient("150 Opening data channel for directory list");
             QFileInfoList fileInfoList = currentDirectory.entryInfoList();
             QFileInfo fileInfo;
             QDateTime date;
+
+            connect(textOut,SIGNAL(disconnected()),this,SLOT(transferTextDataCompleteSuccessfulSlot()));
+            connect(textOut,SIGNAL(errorTransferTextData()),this,SLOT(errorTransferTextDataSlot()));
+            connect(textOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferTexdDataSocketClosedByUserSlot()));
 
             for(int i=0;i<fileInfoList.size();i++){
                 listStr.clear();
@@ -271,100 +234,11 @@ void FTPSession::parsingQuery(QString query){
                 listStr+=" Aug 01 15:59 ";
                 listStr+=fileInfo.fileName();
                 listStr+="\r\n";
-                //QString
-                pDataOut->sendTextData(listStr);
+                textOut->sendTextData(listStr);
             }
+            disconnect(textOut,SIGNAL(disconnected()),textOut,SLOT(clientCloseConnectionSlot()));
+            textOut->disconnectFromHost();
 
-            //pDataOut->sendTextData("end_of_file\r\n");
-            pDataOut->close();
-            sendToClient("226 Transfer complete");
-
-        }
-        else{
-            sendToClient("501 Error in parameters or arguments");
-            return;
-        }
-        return;
-    }
-    if(list[0]=="NLST"){
-
-        // нужно передать список файлов с информацией
-        // для начала нужно сконфигурировать отправляемую информацию
-        // если есть аргумент, то нам нужна информация по аргументу
-
-        // НУЖНО ПРОВЕРИТЬ, А МОЖЕМ ЛИ МЫ ПЕРЕДАТЬ?
-        // ВЫПОЛНЕНА ЛИ КОМАНДА ПОРТ ИЛИ ВКЛЮЧЁН ПАССИВНЫЙ РЕЖИМ?
-        // #######################################################
-        cmdIsUnderstoot = true;
-
-        FTPDataOut *pDataOut;
-
-        if(!activPort.isEmpty() && activMode && activPort.size()==6){
-            // активные режим и порт
-            QString strAddr = "%1.%2.%3.%4";
-            strAddr=strAddr.arg(activPort[0]).arg(activPort[1]).arg(activPort[2]).arg(activPort[3]);
-            FTPDataOut *dataOut = new FTPDataOut(QHostAddress(strAddr),activPort[4]*256+activPort[5],20,this);
-            pDataOut = dataOut;
-        }
-        else if(passiveMode && pasvPort.size()==2){
-            // пассивный режим и отосланый порт
-            FTPDataOut *dataOut = new FTPDataOut(this->peerAddress(),this->peerPort(),pasvPort[0]*256+pasvPort[1],this);
-            pDataOut = dataOut;
-        }
-        else{
-            //неправильная последовательность команд
-            sendToClient("503 incorrect command sequence");
-            return;
-        }
-
-
-        QString listStr;
-        if(list.size()==2){
-            // есть аргумент
-//            QFileInfoList fileInfoList = currentDirectory.entryInfoList();
-//            QFileInfo fileInfo;
-            QDateTime date;
-
-            QStringList filters;
-            filters<<list[1];
-            QFileInfoList fileInfoList = currentDirectory.entryInfoList(filters,QDir::Dirs | QDir::Files);
-            QFileInfo fileInfo;
-            if(!fileInfoList.isEmpty()){
-                sendToClient("150 Opening data channel for directory list");
-                listStr.clear();
-                fileInfo=fileInfoList.takeFirst();
-                listStr+=fileInfo.fileName();
-                listStr+="\r\n";
-                pDataOut->sendTextData(listStr);
-                pDataOut->sendTextData("end_of_file\r\n");
-                sendToClient("226 Transfer complete");
-            }
-            else{
-                sendToClient(QString("550 Directory \"%1\" is not found").arg(list[1]));
-            }
-            pDataOut->close();
-            return;
-
-        }
-        else if(list.size()==1){
-            // без аргумента
-            sendToClient("150 Opening data channel for directory list");
-            QFileInfoList fileInfoList = currentDirectory.entryInfoList();
-            QFileInfo fileInfo;
-            QDateTime date;
-
-            for(int i=0;i<fileInfoList.size();i++){
-                listStr.clear();
-                fileInfo=fileInfoList[i];
-                listStr+=fileInfo.fileName();
-                listStr+="\r\n";
-                //QString
-                pDataOut->sendTextData(listStr);
-            }
-
-            pDataOut->sendTextData("end_of_file\r\n");
-            pDataOut->close();
-            sendToClient("226 Transfer complete");
 
         }
         else{
@@ -508,7 +382,6 @@ void FTPSession::parsingQuery(QString query){
         emit sessionClose(this->socketDescriptor());
         return;
     }
-
     if(list[0]=="RMD" || list[0]=="XRMD"){
         cmdIsUnderstoot = true;
 
@@ -752,7 +625,7 @@ void FTPSession::parsingQuery(QString query){
         cmdIsUnderstoot = true;
         QString strAddr = "%1.%2.%3.%4";
         strAddr=strAddr.arg(activPort[0]).arg(activPort[1]).arg(activPort[2]).arg(activPort[3]);
-        FTPDataOut *dataOut = new FTPDataOut(QHostAddress(strAddr),activPort[4]*256+activPort[5],20,this);
+        binaryOut = new FTPDataOut(QHostAddress(strAddr),activPort[4]*256+activPort[5],20,this);
 
         QString fileName="";
         for(int i=1;i<list.size();i++) fileName =fileName + " " + list[i];
@@ -768,14 +641,27 @@ void FTPSession::parsingQuery(QString query){
         file->open(QFile::ReadOnly);
         if(file->isReadable()){
             // файл можно прочитать
-            connect(dataOut,SIGNAL(tansferFileCompleteSeccessfulSignal()),this,SLOT(transferFileCompleteSlot()));
-            dataOut->sendBinaryData(file);
+            connect(binaryOut,SIGNAL(tansferFileCompleteSeccessfulSignal()),this,SLOT(transferFileCompleteSuccessfulSlot()));
+            connect(binaryOut,SIGNAL(errorTransferBinaryData()),this,SLOT(errorTransferFileSlot()));
+            connect(binaryOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferBinaryDataSocketClosedByUserSlot()));
+            binaryOut->sendBinaryData(file);
         }
         else{
             sendToClient("550 can't access file");
         }
 
         return;
+    }
+    //QString::indexOf()
+    if(list[0].indexOf("ABOR")!=-1){
+        cmdIsUnderstoot = true;
+        if(binaryOut!=NULL){
+            transferBinaryDataSocketClosedByUserSlot();
+        }
+        else{
+            if(textOut!=NULL)
+                transferTexdDataSocketClosedByUserSlot();
+        }
     }
     if(!cmdIsUnderstoot) sendToClient("500 Command is not recognized");
 
@@ -788,8 +674,6 @@ void FTPSession::parsingQuery(QString query){
 void FTPSession::sendToClient(QString data){
     qDebug()<<"Server: "<<data.replace("\r\n","");
     data+="\r\n";
-    //write(QByteArray(data.toUtf8()));
-//    write(QByteArray(data.toUtf8()));
     write(QByteArray(data.toLocal8Bit()));
 }
 
@@ -822,7 +706,6 @@ bool FTPSession::checkUserPassword(QString pass){
 
 
 QString FTPSession::getUserWorkDir(QString user){
-    //return userName+"_work_directory";
     return currentDirectory.absolutePath().replace(userDir,"");
 }
 
@@ -850,7 +733,70 @@ bool FTPSession::checkPermissionCreateDir(QString _userName){
 }
 
 
-void FTPSession::transferFileCompleteSlot(){
+void FTPSession::transferFileCompleteSuccessfulSlot(){
+    qDebug()<<"FTPSession::transferFileCompleteSuccessfulSlot()";
     sendToClient("226 Transfer ok");
+    disconnect(binaryOut,SIGNAL(disconnected()),binaryOut,SLOT(clientCloseConnectionSlot()));
+    disconnect(binaryOut,SIGNAL(tansferFileCompleteSeccessfulSignal()),this,SLOT(transferFileCompleteSuccessfulSlot()));
+    disconnect(binaryOut,SIGNAL(errorTransferBinaryData()),this,SLOT(errorTransferFileSlot()));
+    disconnect(binaryOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferBinaryDataSocketClosedByUserSlot()));
+    binaryOut->close();
+    binaryOut->deleteLater();
+    binaryOut = NULL;
 
+}
+
+
+void FTPSession::transferTextDataCompleteSuccessfulSlot(){
+    qDebug()<<"FTPSession::transferTextDataCompleteSuccessfulSlot()";
+    sendToClient("226 Transfer complete");
+    disconnect(textOut,SIGNAL(disconnected()),this,SLOT(transferTextDataCompleteSuccessfulSlot()));
+    disconnect(textOut,SIGNAL(errorTransferTextData()),this,SLOT(errorTransferTextDataSlot()));
+    disconnect(textOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferTexdDataSocketClosedByUserSlot()));
+    textOut->close();
+    textOut->deleteLater();
+    textOut = NULL;
+}
+
+
+void FTPSession::errorTransferFileSlot(){
+    qDebug()<<"FTPSession::errorTransferFileSlot()";
+}
+
+void FTPSession::errorTransferTextDataSlot(){
+    qDebug()<<"FTPSession::errorTransferTextDataSlot()";
+}
+
+
+void FTPSession::transferBinaryDataSocketClosedByUserSlot(){
+    qDebug()<<"FTPSession::transferBinaryDataSocketClosedByUserSlot()";
+    disconnect(binaryOut,SIGNAL(disconnected()),binaryOut,SLOT(clientCloseConnectionSlot()));
+    disconnect(binaryOut,SIGNAL(tansferFileCompleteSeccessfulSignal()),this,SLOT(transferFileCompleteSuccessfulSlot()));
+    disconnect(binaryOut,SIGNAL(errorTransferBinaryData()),this,SLOT(errorTransferFileSlot()));
+    disconnect(binaryOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferBinaryDataSocketClosedByUserSlot()));
+    binaryOut->abort();
+    //binaryOut->close();
+    binaryOut->deleteLater();
+    binaryOut = NULL;
+    sendToClient("426 Connection closed; transfer aborted");
+    if(sender()==this){
+        sendToClient("226 The abort command was successfully processed");
+    }
+}
+
+
+
+void FTPSession::transferTexdDataSocketClosedByUserSlot(){
+    qDebug()<<"FTPSession::transferTexdDataSocketClosedByUserSlot()";
+    sendToClient("226 Transfer complete");
+    disconnect(textOut,SIGNAL(disconnected()),this,SLOT(transferTextDataCompleteSuccessfulSlot()));
+    disconnect(textOut,SIGNAL(errorTransferTextData()),this,SLOT(errorTransferTextDataSlot()));
+    disconnect(textOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferTexdDataSocketClosedByUserSlot()));
+    textOut->abort();
+    textOut->deleteLater();
+    textOut = NULL;
+    sendToClient("426 Connection closed; transfer aborted");
+    if(sender()==this){
+        sendToClient("226 The abort command was successfully processed");
+    }
 }

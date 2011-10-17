@@ -48,13 +48,19 @@ private:
     QString userDir;
     bool renameIsActive;
     QFileInfo renameObj;
-
+    FTPDataOut *textOut;
+    FTPDataOut *binaryOut;
 
 signals:
     void sessionClose(int);
 
 public slots:
-    void transferFileCompleteSlot();
+    void transferFileCompleteSuccessfulSlot();
+    void transferTextDataCompleteSuccessfulSlot();
+    void errorTransferFileSlot();
+    void errorTransferTextDataSlot();
+    void transferTexdDataSocketClosedByUserSlot();
+    void transferBinaryDataSocketClosedByUserSlot();
 
 };
 
