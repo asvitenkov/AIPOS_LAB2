@@ -9,7 +9,6 @@ FTPDataOut::FTPDataOut(QHostAddress _hostAdress, int _hostPort, int _localPort, 
     setLocalPort(_localPort);
     setLocalAddress(_hostAdress);
     connectToHost(hostAdress,hostPort,QIODevice::ReadWrite);
-
     transferIsActive = false;
     setSocketOption(QAbstractSocket::LowDelayOption,0);
 }

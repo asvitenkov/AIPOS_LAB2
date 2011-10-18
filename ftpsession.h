@@ -12,6 +12,9 @@
 #include "ftpdataout.h"
 #include "ftpdatatransferchannel.h"
 
+#include "ftpactivetextdataout.h"
+#include "ftpactivebinarydataout.h"
+
 class FTPServer;
 
 class FTPSession : public QTcpSocket
@@ -55,18 +58,31 @@ private:
     FTPDataTransferChannel *passiveBinaryOut;
     FTPDataTransferChannel *passiveTransfer;
 
+    FTPActiveTextDataOut *activeTextDataOut;
+    FTPActiveBinaryDataOut *activeBinaryDataOut;
+
 
 signals:
     void sessionClose(int);
 
 public slots:
-    void transferFileCompleteSuccessfulSlot();
-    void transferTextDataCompleteSuccessfulSlot();
-    void errorTransferFileSlot();
-    void errorTransferTextDataSlot();
-    void transferTexdDataSocketClosedByUserSlot();
-    void transferBinaryDataSocketClosedByUserSlot();
-    void passiveTransferTextDataCompleteSlot();
+//    void transferFileCompleteSuccessfulSlot();
+//    void transferTextDataCompleteSuccessfulSlot();
+//    void errorTransferFileSlot();
+//    void errorTransferTextDataSlot();
+//    void transferTexdDataSocketClosedByUserSlot();
+//    void transferBinaryDataSocketClosedByUserSlot();
+//    void passiveTransferTextDataCompleteSlot();
+
+    void activeTransferTextDataSuccessfulSlot();
+    void activeTransferTextDataErrorSlot();
+    void activeTransferTextDataConnectionCloseByClientSlot();
+    void activeTransferTextDataAbortSlot();
+
+    void activeTransferBinaryDataSuccessfulSlot();
+    void activeTransferBinaryDataErrorSlot();
+    void activeTransferBinaryDataConnectionCloseByClientSlot();
+    void activeTransferBinaryDataAbortSlot();
 };
 
 #endif // FTPSESSION_H

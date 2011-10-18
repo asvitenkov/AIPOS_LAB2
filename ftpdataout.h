@@ -7,6 +7,8 @@
 #include <QByteArray>
 #include <QFile>
 
+#include "ftpactivebinarydataout.h"
+
 class FTPDataOut : public QTcpSocket
 {
     Q_OBJECT
