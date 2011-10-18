@@ -27,18 +27,17 @@ void FTPDataOut::sendTextData(QString _data){
         qDebug()<<"FTPDataOut emit errorTransferTextData()";
         emit errorTransferTextData();
     }
+    //while(!waitForBytesWritten(50));
 
 
 }
-
-//void FTPDataOut::sendTextDataSlot(){
-//    write(QByteArray(data.toUtf8()));
-//}
 
 void FTPDataOut::sendBinaryData(QFile *file){
     if(file) writtenFile = file;
     else{
         // сигнал о ошибке
+        qDebug()<<"emit errorTransferBinaryData()";
+        emit errorTransferBinaryData();
     }
     connect(this,SIGNAL(bytesWritten(qint64)),this,SLOT(binaryDataWrittenSlot(qint64)));
     transferIsActive = true;
@@ -69,6 +68,7 @@ void FTPDataOut::binaryDataWrittenSlot(qint64 bytes){
     }
     else{
         disconnect(this,SIGNAL(bytesWritten(qint64)),this,SLOT(binaryDataWrittenSlot(qint64)));
+        //while(!waitForBytesWritten(50));
         transferIsActive = false;
         qDebug()<<"FTPDataOut emit tansferFileCompleteSeccessfulSignal()";
         emit tansferFileCompleteSeccessfulSignal();

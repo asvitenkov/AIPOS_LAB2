@@ -10,6 +10,7 @@
 #include <QFileInfo>
 #include <QFileInfoList>
 #include "ftpdataout.h"
+#include "ftpdatatransferchannel.h"
 
 class FTPServer;
 
@@ -48,8 +49,12 @@ private:
     QString userDir;
     bool renameIsActive;
     QFileInfo renameObj;
-    FTPDataOut *textOut;
-    FTPDataOut *binaryOut;
+    FTPDataOut *activeTextOut;
+    FTPDataOut *activBinaryOut;
+    FTPDataTransferChannel *passiveTextOut;
+    FTPDataTransferChannel *passiveBinaryOut;
+    FTPDataTransferChannel *passiveTransfer;
+
 
 signals:
     void sessionClose(int);
@@ -61,7 +66,7 @@ public slots:
     void errorTransferTextDataSlot();
     void transferTexdDataSocketClosedByUserSlot();
     void transferBinaryDataSocketClosedByUserSlot();
-
+    void passiveTransferTextDataCompleteSlot();
 };
 
 #endif // FTPSESSION_H

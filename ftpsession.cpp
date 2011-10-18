@@ -7,6 +7,7 @@
 #include <QDateTime>
 #include <QAbstractSocket>
 #include "ftpserver.h"
+#include "ftpdatatransferchannel.h"
 #include <QDir>
 #include <QFile>
 
@@ -25,19 +26,17 @@ FTPSession::FTPSession(QObject *parent):QTcpSocket(parent)
     pasvPort.push_back(0);
     pasvPort.push_back(0);
     setUserDir("D:/");
-    //setUserDir(QString::fromLocal8Bit("D:/установочные файлы/программы/—реды разработки программ и SDK//"));
-    //setCurrentDirectory("D:\\TESTFTP");
     currentDirectory.setFilter(QDir::Dirs | QDir::Files );
     renameIsActive = false;
-    textOut = NULL;
-    binaryOut = NULL;
+    activeTextOut = NULL;
+    activBinaryOut = NULL;
+    passiveTextOut = NULL;
+    passiveBinaryOut = NULL;
 
 }
 
 
 void FTPSession::readClient(){
-    //QString query = QString::fromUtf8(this->readAll()).replace("\r\n","");
-    //QString query = this->readAll().repla`ce("\r\n","");
     QString query;
     QByteArray array;
     array = this->readAll();
@@ -49,12 +48,12 @@ void FTPSession::readClient(){
     s5=s5.fromUtf8(array);
     query = query.fromUtf8(array.data());
     query = query.toLocal8Bit();
-    parsingQuery(s4);
+    parsingQuery(QString::fromLocal8Bit(array));
 }
 
 
 void FTPSession::parsingQuery(QString query){
-    qDebug()<<"Client: "<<query.replace("\r\n","");
+    qDebug()<<QTime::currentTime().toString("hh:mm:ss:zzz")+" Client: "<<query.replace("\r\n","");
     query = query.replace("\r\n","");
     QStringList list = query.split(" ");
     bool cmdIsUnderstoot = false;
@@ -130,26 +129,26 @@ void FTPSession::parsingQuery(QString query){
     }
 
 
-    //    if(list[0]=="PASV"){
-    //        cmdIsUnderstoot = true;
-    //        passiveMode =true;
-    //        // нужно отослать адрес и порт
-    ////        pasvPort[0]=qrand()%255+1;
-    ////        pasvPort[1]=qrand()%255;
-    ////        sendToClient("227 Entering Passive mode ("+peerAddress().toString().replace(".",",")+
-    ////                     ","+QString::number(pasvPort[0])+","+QString::number(pasvPort[1])+")");
+    if(list[0]=="PASV"){
+        cmdIsUnderstoot = true;
+        passiveMode =true;
+        //             нужно отослать адрес и порт
+//        pasvPort[0]=qrand()%255+1;
+//        pasvPort[1]=qrand()%255;
+//        sendToClient("227 Entering Passive mode ("+peerAddress().toString().replace(".",",")+
+//                     ","+QString::number(pasvPort[0])+","+QString::number(pasvPort[1])+")");
 
-    //        pasvPort[0]=250;
-    //        pasvPort[1]=128;
-    //        sendToClient("227 Entering Passive mode ("+peerAddress().toString().replace(".",",")+
-    //                     ","+QString::number(pasvPort[0])+","+QString::number(pasvPort[1])+")");
-
-    //        return;
-    //    }
+        pasvPort[0]=250;
+        pasvPort[1]=128;
+        sendToClient("227 Entering Passive mode ("+peerAddress().toString().replace(".",",")+
+                     ","+QString::number(pasvPort[0])+","+QString::number(pasvPort[1])+")");
+        passiveTransfer = new FTPDataTransferChannel(localAddress(),pasvPort[0]*256+pasvPort[1],this);
+        return;
+    }
 
     if(list[0]=="TYPE"){
         cmdIsUnderstoot = true;
-        if(list[1]=="A" || list[1]=="I"){
+        if(list[1]=="I"){
             type = list[1];
             sendToClient("200 Type set to "+type);
         }
@@ -191,11 +190,22 @@ void FTPSession::parsingQuery(QString query){
             // активные режим и порт
             QString strAddr = "%1.%2.%3.%4";
             strAddr=strAddr.arg(activPort[0]).arg(activPort[1]).arg(activPort[2]).arg(activPort[3]);
-            textOut = new FTPDataOut(QHostAddress(strAddr),activPort[4]*256+activPort[5],20,this);
+            activeTextOut = new FTPDataOut(QHostAddress(strAddr),activPort[4]*256+activPort[5],20,this);
+            //activeTextOut = passiveTransfer;
+
+            connect(activeTextOut,SIGNAL(disconnected()),this,SLOT(transferTextDataCompleteSuccessfulSlot()));
+            connect(activeTextOut,SIGNAL(errorTransferTextData()),this,SLOT(errorTransferTextDataSlot()));
+            connect(activeTextOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferTexdDataSocketClosedByUserSlot()));
         }
         else if(passiveMode && pasvPort.size()==2){
             // пассивный режим и отосланый порт
+            //passiveTextOut = new FTPDataTransferChannel(this->localAddress(),pasvPort[0]*256+pasvPort[1],this);
+            passiveTextOut = passiveTransfer;
 
+            //connect(passiveTextOut,SIGNAL(transferTextDataCompleteSuccessful()),this,SLOT(transferTextDataCompleteSuccessfulSlot()));
+            connect(passiveTextOut,SIGNAL(transferSuccessful()),this,SLOT(passiveTransferTextDataCompleteSlot()));
+            connect(passiveTextOut,SIGNAL(errorTransferTexdData()),this,SLOT(errorTransferTextDataSlot()));
+            connect(passiveTextOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferTexdDataSocketClosedByUserSlot()));
         }
         else{
             //неправильна€ последовательность команд
@@ -212,9 +222,7 @@ void FTPSession::parsingQuery(QString query){
             QFileInfo fileInfo;
             QDateTime date;
 
-            connect(textOut,SIGNAL(disconnected()),this,SLOT(transferTextDataCompleteSuccessfulSlot()));
-            connect(textOut,SIGNAL(errorTransferTextData()),this,SLOT(errorTransferTextDataSlot()));
-            connect(textOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferTexdDataSocketClosedByUserSlot()));
+
 
             for(int i=0;i<fileInfoList.size();i++){
                 listStr.clear();
@@ -234,10 +242,22 @@ void FTPSession::parsingQuery(QString query){
                 listStr+=" Aug 01 15:59 ";
                 listStr+=fileInfo.fileName();
                 listStr+="\r\n";
-                textOut->sendTextData(listStr);
+                //qDebug()<<"SEND TEXT TO CLIENT";
+                if(activMode)activeTextOut->sendTextData(listStr);
+                else passiveTextOut->sendTextData(listStr);
             }
-            disconnect(textOut,SIGNAL(disconnected()),textOut,SLOT(clientCloseConnectionSlot()));
-            textOut->disconnectFromHost();
+            if(activMode){
+                disconnect(activeTextOut,SIGNAL(disconnected()),activeTextOut,SLOT(clientCloseConnectionSlot()));
+                activeTextOut->disconnectFromHost();
+            }
+            if(passiveMode){
+                //disconnect(passiveTransfer)
+
+                passiveTextOut->waitForNewConnection(60000);
+
+                //passiveTextOut->closeTransferConnection();
+
+            }
 
 
         }
@@ -625,7 +645,7 @@ void FTPSession::parsingQuery(QString query){
         cmdIsUnderstoot = true;
         QString strAddr = "%1.%2.%3.%4";
         strAddr=strAddr.arg(activPort[0]).arg(activPort[1]).arg(activPort[2]).arg(activPort[3]);
-        binaryOut = new FTPDataOut(QHostAddress(strAddr),activPort[4]*256+activPort[5],20,this);
+        activBinaryOut = new FTPDataOut(QHostAddress(strAddr),activPort[4]*256+activPort[5],20,this);
 
         QString fileName="";
         for(int i=1;i<list.size();i++) fileName =fileName + " " + list[i];
@@ -641,10 +661,10 @@ void FTPSession::parsingQuery(QString query){
         file->open(QFile::ReadOnly);
         if(file->isReadable()){
             // файл можно прочитать
-            connect(binaryOut,SIGNAL(tansferFileCompleteSeccessfulSignal()),this,SLOT(transferFileCompleteSuccessfulSlot()));
-            connect(binaryOut,SIGNAL(errorTransferBinaryData()),this,SLOT(errorTransferFileSlot()));
-            connect(binaryOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferBinaryDataSocketClosedByUserSlot()));
-            binaryOut->sendBinaryData(file);
+            connect(activBinaryOut,SIGNAL(tansferFileCompleteSeccessfulSignal()),this,SLOT(transferFileCompleteSuccessfulSlot()));
+            connect(activBinaryOut,SIGNAL(errorTransferBinaryData()),this,SLOT(errorTransferFileSlot()));
+            connect(activBinaryOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferBinaryDataSocketClosedByUserSlot()));
+            activBinaryOut->sendBinaryData(file);
         }
         else{
             sendToClient("550 can't access file");
@@ -652,14 +672,13 @@ void FTPSession::parsingQuery(QString query){
 
         return;
     }
-    //QString::indexOf()
     if(list[0].indexOf("ABOR")!=-1){
         cmdIsUnderstoot = true;
-        if(binaryOut!=NULL){
+        if(activBinaryOut!=NULL){
             transferBinaryDataSocketClosedByUserSlot();
         }
         else{
-            if(textOut!=NULL)
+            if(activeTextOut!=NULL)
                 transferTexdDataSocketClosedByUserSlot();
         }
     }
@@ -672,7 +691,7 @@ void FTPSession::parsingQuery(QString query){
 
 
 void FTPSession::sendToClient(QString data){
-    qDebug()<<"Server: "<<data.replace("\r\n","");
+    qDebug()<<QTime::currentTime().toString("hh:mm:ss:zzz")+" Server: "<<data.replace("\r\n","");
     data+="\r\n";
     write(QByteArray(data.toLocal8Bit()));
 }
@@ -736,13 +755,13 @@ bool FTPSession::checkPermissionCreateDir(QString _userName){
 void FTPSession::transferFileCompleteSuccessfulSlot(){
     qDebug()<<"FTPSession::transferFileCompleteSuccessfulSlot()";
     sendToClient("226 Transfer ok");
-    disconnect(binaryOut,SIGNAL(disconnected()),binaryOut,SLOT(clientCloseConnectionSlot()));
-    disconnect(binaryOut,SIGNAL(tansferFileCompleteSeccessfulSignal()),this,SLOT(transferFileCompleteSuccessfulSlot()));
-    disconnect(binaryOut,SIGNAL(errorTransferBinaryData()),this,SLOT(errorTransferFileSlot()));
-    disconnect(binaryOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferBinaryDataSocketClosedByUserSlot()));
-    binaryOut->close();
-    binaryOut->deleteLater();
-    binaryOut = NULL;
+    disconnect(activBinaryOut,SIGNAL(disconnected()),activBinaryOut,SLOT(clientCloseConnectionSlot()));
+    disconnect(activBinaryOut,SIGNAL(tansferFileCompleteSeccessfulSignal()),this,SLOT(transferFileCompleteSuccessfulSlot()));
+    disconnect(activBinaryOut,SIGNAL(errorTransferBinaryData()),this,SLOT(errorTransferFileSlot()));
+    disconnect(activBinaryOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferBinaryDataSocketClosedByUserSlot()));
+    activBinaryOut->close();
+    activBinaryOut->deleteLater();
+    activBinaryOut = NULL;
 
 }
 
@@ -750,12 +769,12 @@ void FTPSession::transferFileCompleteSuccessfulSlot(){
 void FTPSession::transferTextDataCompleteSuccessfulSlot(){
     qDebug()<<"FTPSession::transferTextDataCompleteSuccessfulSlot()";
     sendToClient("226 Transfer complete");
-    disconnect(textOut,SIGNAL(disconnected()),this,SLOT(transferTextDataCompleteSuccessfulSlot()));
-    disconnect(textOut,SIGNAL(errorTransferTextData()),this,SLOT(errorTransferTextDataSlot()));
-    disconnect(textOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferTexdDataSocketClosedByUserSlot()));
-    textOut->close();
-    textOut->deleteLater();
-    textOut = NULL;
+    disconnect(activeTextOut,SIGNAL(disconnected()),this,SLOT(transferTextDataCompleteSuccessfulSlot()));
+    disconnect(activeTextOut,SIGNAL(errorTransferTextData()),this,SLOT(errorTransferTextDataSlot()));
+    disconnect(activeTextOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferTexdDataSocketClosedByUserSlot()));
+    activeTextOut->close();
+    activeTextOut->deleteLater();
+    activeTextOut = NULL;
 }
 
 
@@ -770,14 +789,14 @@ void FTPSession::errorTransferTextDataSlot(){
 
 void FTPSession::transferBinaryDataSocketClosedByUserSlot(){
     qDebug()<<"FTPSession::transferBinaryDataSocketClosedByUserSlot()";
-    disconnect(binaryOut,SIGNAL(disconnected()),binaryOut,SLOT(clientCloseConnectionSlot()));
-    disconnect(binaryOut,SIGNAL(tansferFileCompleteSeccessfulSignal()),this,SLOT(transferFileCompleteSuccessfulSlot()));
-    disconnect(binaryOut,SIGNAL(errorTransferBinaryData()),this,SLOT(errorTransferFileSlot()));
-    disconnect(binaryOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferBinaryDataSocketClosedByUserSlot()));
-    binaryOut->abort();
-    //binaryOut->close();
-    binaryOut->deleteLater();
-    binaryOut = NULL;
+    disconnect(activBinaryOut,SIGNAL(disconnected()),activBinaryOut,SLOT(clientCloseConnectionSlot()));
+    disconnect(activBinaryOut,SIGNAL(tansferFileCompleteSeccessfulSignal()),this,SLOT(transferFileCompleteSuccessfulSlot()));
+    disconnect(activBinaryOut,SIGNAL(errorTransferBinaryData()),this,SLOT(errorTransferFileSlot()));
+    disconnect(activBinaryOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferBinaryDataSocketClosedByUserSlot()));
+    activBinaryOut->abort();
+    //activBinaryOut->close();
+    activBinaryOut->deleteLater();
+    activBinaryOut = NULL;
     sendToClient("426 Connection closed; transfer aborted");
     if(sender()==this){
         sendToClient("226 The abort command was successfully processed");
@@ -789,14 +808,26 @@ void FTPSession::transferBinaryDataSocketClosedByUserSlot(){
 void FTPSession::transferTexdDataSocketClosedByUserSlot(){
     qDebug()<<"FTPSession::transferTexdDataSocketClosedByUserSlot()";
     sendToClient("226 Transfer complete");
-    disconnect(textOut,SIGNAL(disconnected()),this,SLOT(transferTextDataCompleteSuccessfulSlot()));
-    disconnect(textOut,SIGNAL(errorTransferTextData()),this,SLOT(errorTransferTextDataSlot()));
-    disconnect(textOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferTexdDataSocketClosedByUserSlot()));
-    textOut->abort();
-    textOut->deleteLater();
-    textOut = NULL;
+    disconnect(activeTextOut,SIGNAL(disconnected()),this,SLOT(transferTextDataCompleteSuccessfulSlot()));
+    disconnect(activeTextOut,SIGNAL(errorTransferTextData()),this,SLOT(errorTransferTextDataSlot()));
+    disconnect(activeTextOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferTexdDataSocketClosedByUserSlot()));
+    activeTextOut->abort();
+    activeTextOut->deleteLater();
+    activeTextOut = NULL;
     sendToClient("426 Connection closed; transfer aborted");
     if(sender()==this){
         sendToClient("226 The abort command was successfully processed");
     }
+}
+
+
+void FTPSession::passiveTransferTextDataCompleteSlot(){
+    qDebug()<<"FTPSession::passiveTransferTextDataCompleteSlot()";
+    sendToClient("226 Transfer complete");
+    disconnect(passiveTextOut,SIGNAL(transferSuccessful()),this,SLOT(passiveTransferTextDataCompleteSlot()));
+    disconnect(passiveTextOut,SIGNAL(errorTransferTexdData()),this,SLOT(errorTransferTextDataSlot()));
+    disconnect(passiveTextOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferTexdDataSocketClosedByUserSlot()));
+    passiveTextOut->closeTransferConnection();
+    passiveTextOut->deleteLater();
+    passiveTextOut = NULL;
 }

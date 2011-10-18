@@ -7,8 +7,14 @@
 
 class FTPDataTransferChannel : public QTcpServer
 {
+    Q_OBJECT
+
 public:
-    FTPDataTransferChannel(QObject *parent = 0);
+    FTPDataTransferChannel(QHostAddress _localAdress, int _localPort, QObject *parent = 0);
+    void sendTextData(QString aData);
+    void closeTransferConnection();
+    void abortTransferConnection();
+    void endTextData();
 
 private:
     void incomingConnection(int handle);
@@ -19,8 +25,31 @@ private:
     QFile fileData;
     bool transferText;
     bool transferFile;
-    QHostAddress hostAdress;
-    int hostPort;
+    QHostAddress localAdress;
+    QTcpSocket *transferSocket;
+    int localPort;
+    bool sendTextDataFinished;
+
+signals:
+    void disconnected();
+    void errorTransferTexdData();
+    void errorTransferBinaryData();
+    void closeConnectionByClient();
+    void transferTextDataCompleteSuccessful();
+    void transferBinaryDataCompleteSuccessful();
+    void transferSuccessful();
+
+private slots:
+    void disconnectedSlot();
+    void errorTransferTexdDataSlot();
+    void errorTransferBinaryDataSlot();
+    void closeConnectionByClientSlot();
+//    void transferTextDataCompleteSuccessfulSlot();
+//    void transferBinaryDataCompleteSuccessfulSlot();
+    void transferSuccessfulSlot();
+    void sendTextDataSlot();
+
+
 };
 
 #endif // FTPDATATRANSFERCHANNEL_H
