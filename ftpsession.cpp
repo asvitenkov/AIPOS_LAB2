@@ -34,6 +34,11 @@ FTPSession::FTPSession(QObject *parent):QTcpSocket(parent)
     passiveTextOut = NULL;
     passiveBinaryOut = NULL;
 
+    activeTextDataOut = NULL;
+    activeBinaryDataOut = NULL;
+    activeBinaryDataIn = NULL;
+
+
 }
 
 
@@ -643,8 +648,12 @@ void FTPSession::parsingQuery(QString query){
                 connect(activeBinaryDataOut,SIGNAL(sendBinaryDataSuccessfulSignal()),this,SLOT(activeTransferBinaryDataSuccessfulSlot()));
                 activeBinaryDataOut->sendFile(file);
             }
-            else sendToClient("550 can't access file");
+            else{
+                sendToClient("550 can't access file");
+                file->deleteLater();
+            }
         else{
+            file->deleteLater();
             sendToClient("550 can't access file");
         }
         mutex.unlock();
@@ -667,6 +676,122 @@ void FTPSession::parsingQuery(QString query){
         }
         mutex.unlock();
 
+    }
+    if(list[0]=="STOR"){
+        cmdIsUnderstoot = true;
+
+        QString targetName="";
+        for(int i=1;i<list.size();i++) targetName =targetName + " " + list[i];
+        targetName = targetName.trimmed().replace("\\","/");
+        while(targetName.indexOf("//")!=-1){
+            targetName = targetName.replace("//","/");
+        }
+        QString tempName;
+        if(!targetName.isEmpty()){
+            // аргумент не пустой
+            if(targetName[0]=='/'){
+                // абсолютный
+                tempName = QString(userDir + targetName).replace("//","/");
+            }
+            else{
+                // относительный
+                QDir tmpDir(currentDirectory);
+                tmpDir.cdUp();
+                tempName = QString(currentDirectory.absolutePath()+"/"+targetName).replace("//","/");
+            }
+        }
+        else{
+            // аргумент пустой
+            sendToClient("501 Error in parameters or arguments");
+            return;
+        }
+
+        if(activMode){
+            // нужно проверить, есть ли у нас порт или нет
+            if(activPort.size()==6){
+                // порт есть можно устанавливать соединение
+                QString strAddr = "%1.%2.%3.%4";
+                strAddr=strAddr.arg(activPort[0]).arg(activPort[1]).arg(activPort[2]).arg(activPort[3]);
+
+                QFile *file = new QFile(tempName);
+                if(file->open(QIODevice::WriteOnly)){
+                    // файл открылся на запись
+                    activeBinaryDataIn = new FTPActiveBinaryDataIn(localAddress(),localPort(),this);
+                    activeBinaryDataIn->setSaveFile(file);
+                    activeBinaryDataIn->connectToHost(QHostAddress(strAddr),activPort[4]*256+activPort[5]);
+
+                    sendToClient("150 Opening data channel for file transfer");
+
+                    connect(activeBinaryDataIn,SIGNAL(errorStoreDataInFileSignal()),this,SLOT(activeStoreBinaryDataErrorSlot()));
+                    connect(activeBinaryDataIn,SIGNAL(storeDataInFileCompleteSuccessfulSignal()),this,SLOT(activeStoreBinaryDataCompleteSuccessfulSlot()));
+                    connect(activeBinaryDataIn,SIGNAL(connectionCloseByClientSignal()),this,SLOT(activeStoreBinaryDataConnectionCloseByClientSlot()));
+                    connect(activeBinaryDataIn,SIGNAL(abortCommandCompleteSignal()),this,SLOT(activeStoreBinaryDataAbortSlot()));
+
+                    return;
+
+                }
+                else{
+                    // файл не открылся на запись
+                    sendToClient("450 Internal error error open file");
+                    return;
+                }
+
+            }
+            else{
+                // нет порта неправильная последовательность команд
+                sendToClient("503 incorrect sequence of commands");
+                return;
+            }
+        }
+        else if(passiveMode){
+
+        }
+        else{
+            // ошибка
+            qDebug()<<"ne vklyuchen ne aktivnyi ne passivnyi rejim";
+        }
+
+
+
+    }
+    if(list[0]=="SIZE"){
+        cmdIsUnderstoot  = true;
+
+        QString targetName="";
+
+        for(int i=1;i<list.size();i++) targetName =targetName + " " + list[i];
+        targetName = targetName.trimmed().replace("\\","/");
+        while(targetName.indexOf("//")!=-1){
+            targetName = targetName.replace("//","/");
+        }
+        if(!targetName.isEmpty()){
+            // аргумент не пустой
+
+            QString tempName;
+            if(targetName[0]=='/'){
+                // абсолютный
+                tempName = QString(userDir + targetName).replace("//","/");
+            }
+            else{
+                // относительный
+                QDir tmpDir(currentDirectory);
+                tmpDir.cdUp();
+                tempName = QString(currentDirectory.absolutePath()+"/"+targetName).replace("//","/");
+            }
+            QFileInfo fileInfo(tempName);
+            if(fileInfo.exists()){
+                // такой файл есть и его можно прочесть
+                sendToClient("213 "+QString::number(fileInfo.size()));
+            }
+            else{
+                sendToClient("550 File not found");
+            }
+        }
+        else{
+            // аргумент пустой
+            sendToClient("501 Error in parameters or arguments");
+        }
+        return;
     }
     if(!cmdIsUnderstoot) sendToClient("500 Command is not recognized");
 
@@ -737,97 +862,8 @@ bool FTPSession::checkPermissionCreateDir(QString _userName){
     return true;
 }
 
-
-//void FTPSession::transferFileCompleteSuccessfulSlot(){
-//    qDebug()<<"FTPSession::transferFileCompleteSuccessfulSlot()";
-//    sendToClient("226 Transfer ok");
-////    disconnect(activBinaryOut,SIGNAL(disconnected()),activBinaryOut,SLOT(clientCloseConnectionSlot()));
-////    disconnect(activBinaryOut,SIGNAL(tansferFileCompleteSeccessfulSignal()),this,SLOT(transferFileCompleteSuccessfulSlot()));
-////    disconnect(activBinaryOut,SIGNAL(errorTransferBinaryData()),this,SLOT(errorTransferFileSlot()));
-////    disconnect(activBinaryOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferBinaryDataSocketClosedByUserSlot()));
-//    activBinaryOut->close();
-//    activBinaryOut->deleteLater();
-//    activBinaryOut = NULL;
-
-//}
-
-
-//void FTPSession::transferTextDataCompleteSuccessfulSlot(){
-//    qDebug()<<"FTPSession::transferTextDataCompleteSuccessfulSlot()";
-//    sendToClient("226 Transfer complete");
-////    disconnect(activeTextOut,SIGNAL(disconnected()),this,SLOT(transferTextDataCompleteSuccessfulSlot()));
-////    disconnect(activeTextOut,SIGNAL(errorTransferTextData()),this,SLOT(errorTransferTextDataSlot()));
-////    disconnect(activeTextOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferTexdDataSocketClosedByUserSlot()));
-//    activeTextOut->close();
-//    activeTextOut->deleteLater();
-//    activeTextOut = NULL;
-//}
-
-
-//void FTPSession::errorTransferFileSlot(){
-//    qDebug()<<"FTPSession::errorTransferFileSlot()";
-//}
-
-//void FTPSession::errorTransferTextDataSlot(){
-//    qDebug()<<"FTPSession::errorTransferTextDataSlot()";
-//}
-
-
-//void FTPSession::transferBinaryDataSocketClosedByUserSlot(){
-//    qDebug()<<"FTPSession::transferBinaryDataSocketClosedByUserSlot()";
-////    disconnect(activBinaryOut,SIGNAL(disconnected()),activBinaryOut,SLOT(clientCloseConnectionSlot()));
-////    disconnect(activBinaryOut,SIGNAL(tansferFileCompleteSeccessfulSignal()),this,SLOT(transferFileCompleteSuccessfulSlot()));
-////    disconnect(activBinaryOut,SIGNAL(errorTransferBinaryData()),this,SLOT(errorTransferFileSlot()));
-////    disconnect(activBinaryOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferBinaryDataSocketClosedByUserSlot()));
-//    activBinaryOut->abort();
-//    //activBinaryOut->close();
-//    activBinaryOut->deleteLater();
-//    activBinaryOut = NULL;
-//    sendToClient("426 Connection closed; transfer aborted");
-//    if(sender()==this){
-//        sendToClient("226 The abort command was successfully processed");
-//    }
-//}
-
-
-
-//void FTPSession::transferTexdDataSocketClosedByUserSlot(){
-//    qDebug()<<"FTPSession::transferTexdDataSocketClosedByUserSlot()";
-//    sendToClient("226 Transfer complete");
-////    disconnect(activeTextOut,SIGNAL(disconnected()),this,SLOT(transferTextDataCompleteSuccessfulSlot()));
-////    disconnect(activeTextOut,SIGNAL(errorTransferTextData()),this,SLOT(errorTransferTextDataSlot()));
-////    disconnect(activeTextOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferTexdDataSocketClosedByUserSlot()));
-//    activeTextOut->abort();
-//    activeTextOut->deleteLater();
-//    activeTextOut = NULL;
-//    sendToClient("426 Connection closed; transfer aborted");
-//    if(sender()==this){
-//        sendToClient("226 The abort command was successfully processed");
-//    }
-//}
-
-
-//void FTPSession::passiveTransferTextDataCompleteSlot(){
-//    qDebug()<<"FTPSession::passiveTransferTextDataCompleteSlot()";
-//    sendToClient("226 Transfer complete");
-////    disconnect(passiveTextOut,SIGNAL(transferSuccessful()),this,SLOT(passiveTransferTextDataCompleteSlot()));
-////    disconnect(passiveTextOut,SIGNAL(errorTransferTexdData()),this,SLOT(errorTransferTextDataSlot()));
-////    disconnect(passiveTextOut,SIGNAL(closeConnectionByClient()),this,SLOT(transferTexdDataSocketClosedByUserSlot()));
-//    passiveTextOut->closeTransferConnection();
-//    passiveTextOut->deleteLater();
-//    passiveTextOut = NULL;
-//}
-
-
-
 void FTPSession::activeTransferTextDataConnectionCloseByClientSlot(){
     qDebug()<<"FTPSession::activeTransferTextDataConnectionCloseByClient()";
-//    if(activeTextDataOut){
-////        disconnect(activeTextDataOut,SIGNAL(errorSendTexdDataSignal()),this,SLOT(activeTransferTextDataErrorSlot()));
-////        disconnect(activeTextDataOut,SIGNAL(connectionCloseByClientSignal()),this,SLOT(activeTransferTextDataConnectionCloseByClientSlot()));
-////        disconnect(activeTextDataOut,SIGNAL(sendTextDataSuccessfulSignal()),this,SLOT(activeTransferTextDataSuccessfulSlot()));
-//        activeTextDataOut->deleteLater();
-//    }
     activeTextDataOut = NULL;
     sender()->deleteLater();
 
@@ -836,12 +872,6 @@ void FTPSession::activeTransferTextDataConnectionCloseByClientSlot(){
 void FTPSession::activeTransferTextDataErrorSlot(){
     qDebug()<<"FTPSession::activeTransferTextDataErrorSlot()";
     sendToClient("451 Local error, operation aborted");
-//    if(activeTextDataOut){
-////        disconnect(activeTextDataOut,SIGNAL(errorSendTexdDataSignal()),this,SLOT(activeTransferTextDataErrorSlot()));
-////        disconnect(activeTextDataOut,SIGNAL(connectionCloseByClientSignal()),this,SLOT(activeTransferTextDataConnectionCloseByClientSlot()));
-////        disconnect(activeTextDataOut,SIGNAL(sendTextDataSuccessfulSignal()),this,SLOT(activeTransferTextDataSuccessfulSlot()));
-//        activeTextDataOut->deleteLater();
-//    }
     activeTextDataOut = NULL;
     sender()->deleteLater();
 }
@@ -849,12 +879,6 @@ void FTPSession::activeTransferTextDataErrorSlot(){
 void FTPSession::activeTransferTextDataSuccessfulSlot(){
     qDebug()<<"FTPSession::activeTransferTextDataSuccessfulSlot()";
     sendToClient("226 Transfer complete");
-//    if(activeTextDataOut){
-////        disconnect(activeTextDataOut,SIGNAL(errorSendTexdDataSignal()),this,SLOT(activeTransferTextDataErrorSlot()));
-////        disconnect(activeTextDataOut,SIGNAL(connectionCloseByClientSignal()),this,SLOT(activeTransferTextDataConnectionCloseByClientSlot()));
-////        disconnect(activeTextDataOut,SIGNAL(sendTextDataSuccessfulSignal()),this,SLOT(activeTransferTextDataSuccessfulSlot()));
-//        activeTextDataOut->deleteLater();
-//    }
     activeTextDataOut = NULL;
     sender()->deleteLater();
 }
@@ -862,24 +886,12 @@ void FTPSession::activeTransferTextDataSuccessfulSlot(){
 void FTPSession::activeTransferTextDataAbortSlot(){
     qDebug()<<"void FTPSession::activeTransferTextDataAbortSlot()";
     sendToClient("226 ");
-//    if(activeTextDataOut){
-////        disconnect(activeTextDataOut,SIGNAL(errorSendTexdDataSignal()),this,SLOT(activeTransferTextDataErrorSlot()));
-////        disconnect(activeTextDataOut,SIGNAL(connectionCloseByClientSignal()),this,SLOT(activeTransferTextDataConnectionCloseByClientSlot()));
-////        disconnect(activeTextDataOut,SIGNAL(sendTextDataSuccessfulSignal()),this,SLOT(activeTransferTextDataSuccessfulSlot()));
-//        activeTextDataOut->deleteLater();
-//    }
     activeTextDataOut = NULL;
     sender()->deleteLater();
 }
 
 void FTPSession::activeTransferBinaryDataConnectionCloseByClientSlot(){
     qDebug()<<"FTPSession::activeTransferBinaryDataConnectionCloseByClientSlot";
-//    if(activeTextDataOut){
-////        disconnect(activeTextDataOut,SIGNAL(errorSendTexdDataSignal()),this,SLOT(activeTransferTextDataErrorSlot()));
-////        disconnect(activeTextDataOut,SIGNAL(connectionCloseByClientSignal()),this,SLOT(activeTransferTextDataConnectionCloseByClientSlot()));
-////        disconnect(activeTextDataOut,SIGNAL(sendTextDataSuccessfulSignal()),this,SLOT(activeTransferTextDataSuccessfulSlot()));
-//        activeTextDataOut->deleteLater();
-//    }
     sender()->deleteLater();
     activeTextDataOut = NULL;
 
@@ -888,13 +900,6 @@ void FTPSession::activeTransferBinaryDataConnectionCloseByClientSlot(){
 void FTPSession::activeTransferBinaryDataErrorSlot(){
     qDebug()<<"FTPSession::activeTransferBinaryDataErrorSlot";
     sendToClient("451 Local error, operation aborted");
-//    if(activeBinaryDataOut){
-////      connect(activeBinaryDataOut,SIGNAL(errorSendBinaryDataSignal()),this,SLOT(activeTransferBinaryDataErrorSlot()));
-////      connect(activeBinaryDataOut,SIGNAL(connectionCloseByClientSignal()),this,SLOT(activeTransferBinaryDataConnectionCloseByClientSlot()));
-////      connect(activeBinaryDataOut,SIGNAL(sendBinaryDataSuccessfulSignal()),this,SLOT(activeTransferBinaryDataSuccessfulSlot()));
-//      activeBinaryDataOut->disconnectFromHost();
-//      activeBinaryDataOut->deleteLater();
-//    }
     sender()->deleteLater();
     activeBinaryDataOut = NULL;
 
@@ -903,13 +908,6 @@ void FTPSession::activeTransferBinaryDataErrorSlot(){
 void FTPSession::activeTransferBinaryDataSuccessfulSlot(){
     qDebug()<<"FTPSession::activeTransferBinaryDataSuccessfulSlot";
     sendToClient("226 Transfer complete");
-//    if(activeBinaryDataOut){
-////      connect(activeBinaryDataOut,SIGNAL(errorSendBinaryDataSignal()),this,SLOT(activeTransferBinaryDataErrorSlot()));
-////      connect(activeBinaryDataOut,SIGNAL(connectionCloseByClientSignal()),this,SLOT(activeTransferBinaryDataConnectionCloseByClientSlot()));
-////      connect(activeBinaryDataOut,SIGNAL(sendBinaryDataSuccessfulSignal()),this,SLOT(activeTransferBinaryDataSuccessfulSlot()));
-//      activeBinaryDataOut->disconnectFromHost();
-//      activeBinaryDataOut->deleteLater();
-//    }
     activeBinaryDataOut = NULL;
     sender()->deleteLater();
 }
@@ -917,13 +915,31 @@ void FTPSession::activeTransferBinaryDataSuccessfulSlot(){
 
 void FTPSession::activeTransferBinaryDataAbortSlot(){
     qDebug()<<"FTPSession::activeTransferBinaryDataAbortSlot";
-    sendToClient("226 ");
-//    if(activeBinaryDataOut){
-////      connect(activeBinaryDataOut,SIGNAL(errorSendBinaryDataSignal()),this,SLOT(activeTransferBinaryDataErrorSlot()));
-////      connect(activeBinaryDataOut,SIGNAL(connectionCloseByClientSignal()),this,SLOT(activeTransferBinaryDataConnectionCloseByClientSlot()));
-////      connect(activeBinaryDataOut,SIGNAL(sendBinaryDataSuccessfulSignal()),this,SLOT(activeTransferBinaryDataSuccessfulSlot()));
-//      activeBinaryDataOut->deleteLater();
-//    }
+    sendToClient("226 Abort command successful");
     activeBinaryDataOut = NULL;
+    sender()->deleteLater();
+}
+
+
+void FTPSession::activeStoreBinaryDataAbortSlot(){
+    qDebug()<<"FTPSession::activeStoreBinaryDataAbortSlot()";
+    sender()->deleteLater();
+    sendToClient("226 Abort command successful");
+}
+
+void FTPSession::activeStoreBinaryDataCompleteSuccessfulSlot(){
+    qDebug()<<"FTPSession::activeStoreBinaryDataCompleteSuccessfulSlot()";
+    sender()->deleteLater();
+    sendToClient("226 Transfer OK");
+}
+
+void FTPSession::activeStoreBinaryDataConnectionCloseByClientSlot(){
+    qDebug()<<"FTPSession::activeStoreBinaryDataConnectionCloseByClientSlot()";
+    sender()->deleteLater();
+}
+
+void FTPSession::activeStoreBinaryDataErrorSlot(){
+    qDebug()<<"FTPSession::activeStoreBinaryDataErrorSlot()";
+    sendToClient("451 Local error, operation aborted");
     sender()->deleteLater();
 }

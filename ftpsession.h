@@ -14,6 +14,7 @@
 
 #include "ftpactivetextdataout.h"
 #include "ftpactivebinarydataout.h"
+#include "ftpactivebinarydatain.h"
 
 class FTPServer;
 
@@ -60,20 +61,13 @@ private:
 
     FTPActiveTextDataOut *activeTextDataOut;
     FTPActiveBinaryDataOut *activeBinaryDataOut;
+    FTPActiveBinaryDataIn *activeBinaryDataIn;
 
 
 signals:
     void sessionClose(int);
 
 public slots:
-//    void transferFileCompleteSuccessfulSlot();
-//    void transferTextDataCompleteSuccessfulSlot();
-//    void errorTransferFileSlot();
-//    void errorTransferTextDataSlot();
-//    void transferTexdDataSocketClosedByUserSlot();
-//    void transferBinaryDataSocketClosedByUserSlot();
-//    void passiveTransferTextDataCompleteSlot();
-
     void activeTransferTextDataSuccessfulSlot();
     void activeTransferTextDataErrorSlot();
     void activeTransferTextDataConnectionCloseByClientSlot();
@@ -83,6 +77,12 @@ public slots:
     void activeTransferBinaryDataErrorSlot();
     void activeTransferBinaryDataConnectionCloseByClientSlot();
     void activeTransferBinaryDataAbortSlot();
+
+    //void activeReceptionBinaryDataErrorOpenFileSlot();
+    void activeStoreBinaryDataCompleteSuccessfulSlot();
+    void activeStoreBinaryDataConnectionCloseByClientSlot();
+    void activeStoreBinaryDataErrorSlot();
+    void activeStoreBinaryDataAbortSlot();
 };
 
 #endif // FTPSESSION_H

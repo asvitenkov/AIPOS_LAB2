@@ -7,11 +7,16 @@ FTPActiveBinaryDataOut::FTPActiveBinaryDataOut(QHostAddress aHostAdress, int aHo
     setLocalAddress(aLocalAdress);
     connect(this,SIGNAL(disconnected()),this,SLOT(connectionCloseByClientSlot()));
     connectToHost(aHostAdress,aHostPort,QIODevice::ReadWrite);
+    file = NULL;
 }
 
 void FTPActiveBinaryDataOut::sendFile(QFile *aFile){
     qDebug()<<"FTPActiveBinaryDataOut::sendFile";
-    if(file!=NULL) file = aFile;
+    if(aFile!=NULL){
+        file = aFile;
+        connect(this,SIGNAL(bytesWritten(qint64)),this,SLOT(continueTransferBinaryDataSlot()));
+        continueTransferBinaryDataSlot();
+    }
     else{
         // нулевая ссылка
         // послать ошибку
@@ -19,8 +24,8 @@ void FTPActiveBinaryDataOut::sendFile(QFile *aFile){
         emit errorSendBinaryDataSignal();
         return;
     }
-    connect(this,SIGNAL(bytesWritten(qint64)),this,SLOT(continueTransferBinaryDataSlot()));
-    continueTransferBinaryDataSlot();
+    //connect(this,SIGNAL(bytesWritten(qint64)),this,SLOT(continueTransferBinaryDataSlot()));
+    //continueTransferBinaryDataSlot();
 }
 
 
@@ -38,7 +43,7 @@ void FTPActiveBinaryDataOut::continueTransferBinaryDataSlot(){
 
                 if (size < 0){
                     // ошибка, сигнал об ошибке
-                    qDebug()<<"################"<<file->errorString();
+                    qDebug()<<"################";//<<file->errorString();
                     qDebug()<<"FTPActiveBinaryDataOut::continueTransferBinaryDataSlot emit errorTransferBinaryData();";
                     file->close();
                     delete file;
@@ -51,7 +56,8 @@ void FTPActiveBinaryDataOut::continueTransferBinaryDataSlot(){
     }
     else{
         file->close();
-        delete file;
+        file->deleteLater();
+        //delete file;
         disconnect(this,SIGNAL(bytesWritten(qint64)),this,SLOT(continueTransferBinaryDataSlot()));
         qDebug()<<"FTPActiveBinaryDataOut::continueTransferBinaryDataSlot emit sendBinaryDataSuccessfulSignal()";
         emit sendBinaryDataSuccessfulSignal();
@@ -62,6 +68,7 @@ void FTPActiveBinaryDataOut::continueTransferBinaryDataSlot(){
 void FTPActiveBinaryDataOut::connectionCloseByClientSlot(){
     disconnect(this,SIGNAL(bytesWritten(qint64)),this,SLOT(continueTransferBinaryDataSlot()));
     file->close();
-    delete file;
+    file->deleteLater();
+    //delete file;
     emit connectionCloseByClientSignal();
 }
