@@ -15,6 +15,7 @@ public:
     FTPServer(QObject *parent = 0 );
     //void sessionClose(int _descriptor);
     void setServerAdress(QHostAddress _adress);
+    void startServer();
 
 private:
     void incomingConnection(int socketID);

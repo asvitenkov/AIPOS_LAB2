@@ -5,14 +5,6 @@
 FTPServer::FTPServer(QObject *parent): QTcpServer(parent)
 {
     sessionsList.clear();
-    //this->listen(QHostAddress::Any,port);
-    // нужна проверка, а не занят ли этот порт!!!!1
-//    $$$$$$$$$$$
-//    $$$$$$$$$$$
-//    $$$$$$$$$$$
-//            $$$$$$$$$$$
-//            $$$$$$$$$$$
-//            $$$$$$$$$$$
 }
 
 void FTPServer::incomingConnection(int socketID){
@@ -35,4 +27,9 @@ void FTPServer::sessionCloseSLOT(int _descriptor){
 
 void FTPServer::setServerAdress(QHostAddress _adress){
     serverAdress = _adress;
+}
+
+
+void FTPServer::startServer(){
+
 }

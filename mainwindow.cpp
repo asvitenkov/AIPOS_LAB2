@@ -6,21 +6,29 @@
 #include <QDateTime>
 #include <QLocale>
 #include <QDate>
+#include <QErrorMessage>
+#include <QMessageBox>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-    FTPServer *server = new FTPServer(this);
-    server->listen(QHostAddress::Any,21);
-    server->setServerAdress(QHostAddress("172.31.5.51"));
-
-
-
-
+    ui->editServerLog->setReadOnly(true);
+    ui->serverAdressLine->setText("127.0.0.1");
     QApplication::setStyle("Cleanlooks");
     QApplication::setPalette(QApplication::style()->standardPalette());
+
+    server = NULL;
+    connect(ui->buttonRunServer,SIGNAL(clicked()),this,SLOT(runServerSlot()));
+
+
+
+
+
+
+
+
 //    QDir dir("D:\\");
 //    QFileInfoList fileInfoList = dir.entryInfoList();
 //    QFileInfo fileInfo;
@@ -33,4 +41,39 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+
+void MainWindow::runServerSlot(){
+
+    QHostAddress hostAdress(ui->serverAdressLine->text().replace(",","."));
+    if(hostAdress.isNull()){
+        //адрес некорректный
+        QMessageBox::StandardButton reply;
+        reply = QMessageBox::information(this, QString::fromLocal8Bit("Некорректный адрес сервера"),QString::fromLocal8Bit("Введите корректный адрес сервера"));
+        return;
+    }
+    server = new FTPServer(this);
+    server->setServerAdress(hostAdress);
+    if(server->listen(QHostAddress::Any,21)){
+        // сервер стартовал
+        addRecordInLog(QString::fromLocal8Bit("Сервер запущен"));
+    }
+    else{
+        // сервер не смог стартовать
+        addRecordInLog(QString::fromLocal8Bit("Сервер не запущен ")+server->errorString());
+
+    }
+
+}
+
+
+void MainWindow::addRecordInLog(QString aRecord)
+{
+    ui->editServerLog->append(aRecord);
+}
+
+
+void MainWindow::stopServerSlot(){
+
 }

@@ -30,6 +30,7 @@ public:
     void setUserDir(QString userDirName);
 
 
+
 private slots:
     void readClient();
 

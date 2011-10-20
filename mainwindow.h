@@ -18,6 +18,13 @@ protected:
 
 private:
     Ui::MainWindow *ui;
+
+    FTPServer *server;
+
+private slots:
+    void addRecordInLog(QString aRecord);
+    void runServerSlot();
+    void stopServerSlot();
 };
 
 #endif // MAINWINDOW_H
