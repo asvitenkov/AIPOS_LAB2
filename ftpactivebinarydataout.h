@@ -16,16 +16,19 @@ public:
     explicit FTPActiveBinaryDataOut(QHostAddress aHostAdress,int aHostPort, QHostAddress aLocalAdress, int aLocalPort, QObject *parent=0);
     ~FTPActiveBinaryDataOut();
     void sendFile(QDataStream *aStream);
+    void abortConnection();
 
 signals:
     void errorSendBinaryDataSignal();
     void connectionCloseByClientSignal();
     void sendBinaryDataSuccessfulSignal();
+    void abortConnectionSignal();
 
 public slots:
 private slots:
     void connectionCloseByClientSlot();
     void continueTransferBinaryDataSlot();
+    void abortConnectionSlot();
 
 private:
     QDataStream *outStream;

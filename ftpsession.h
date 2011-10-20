@@ -25,6 +25,7 @@ class FTPSession : public QTcpSocket
 
 public:
     FTPSession(QObject *parent = 0);
+    ~FTPSession();
     bool setCurrentDirectory(QString);
     void setUserDir(QString userDirName);
 
@@ -44,6 +45,7 @@ private:
     bool checkUserPassword(QString);
     bool checkPermissionCreateDir(QString);
     QString getUserWorkDir(QString);
+    QString getAbsolutePuth(QString aDirName);
     bool passiveMode;
     bool activMode;
     QString type;
@@ -53,11 +55,6 @@ private:
     QString userDir;
     bool renameIsActive;
     QFileInfo renameObj;
-//    FTPDataOut *activeTextOut;
-//    FTPDataOut *activBinaryOut;
-//    FTPDataTransferChannel *passiveTextOut;
-//    FTPDataTransferChannel *passiveBinaryOut;
-//    FTPDataTransferChannel *passiveTransfer;
 
     FTPActiveTextDataOut *activeTextDataOut;
     FTPActiveBinaryDataOut *activeBinaryDataOut;

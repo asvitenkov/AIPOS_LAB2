@@ -18,14 +18,14 @@ void FTPActiveTextDataOut::sendTextData(QString aData){
 }
 
 void FTPActiveTextDataOut::connectionClosedSlot(){
-    qDebug()<<"FTPActiveTextDataOut::connectionClosedSlot()";
+    //qDebug()<<"FTPActiveTextDataOut::connectionClosedSlot()";
     if(bytesToWrite()!=0){
         // идёт запись а соединение закрыто
         emit connectionCloseByClientSignal();
     }
     else{
         // записи нет и соединение закрывается
-        qDebug()<<"FTPActiveTextDataOut emit sendTextDataSuccessfulSignal()";
+        //qDebug()<<"FTPActiveTextDataOut emit sendTextDataSuccessfulSignal()";
         emit sendTextDataSuccessfulSignal();
     }
 }
