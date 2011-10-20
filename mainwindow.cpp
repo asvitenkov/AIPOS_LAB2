@@ -15,12 +15,13 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     ui->editServerLog->setReadOnly(true);
-    ui->serverAdressLine->setText("127.0.0.1");
+    ui->serverAdressLine->setText("192.168.38.105");
     QApplication::setStyle("Cleanlooks");
     QApplication::setPalette(QApplication::style()->standardPalette());
 
     server = NULL;
     connect(ui->buttonRunServer,SIGNAL(clicked()),this,SLOT(runServerSlot()));
+    connect(ui->clearLogButton,SIGNAL(clicked()),this,SLOT(clearLogSlot()));
 
 
 
@@ -58,6 +59,7 @@ void MainWindow::runServerSlot(){
     if(server->listen(QHostAddress::Any,21)){
         // сервер стартовал
         addRecordInLog(QString::fromLocal8Bit("Сервер запущен"));
+        connect(server,SIGNAL(addRecordToLogSignal(QString)),this,SLOT(addRecordInLog(QString)));
     }
     else{
         // сервер не смог стартовать
@@ -76,4 +78,9 @@ void MainWindow::addRecordInLog(QString aRecord)
 
 void MainWindow::stopServerSlot(){
 
+}
+
+
+void MainWindow::clearLogSlot(){
+    ui->editServerLog->clear();
 }

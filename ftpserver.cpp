@@ -10,8 +10,9 @@ FTPServer::FTPServer(QObject *parent): QTcpServer(parent)
 void FTPServer::incomingConnection(int socketID){
     FTPSession *session = new FTPSession(this);
     connect(session,SIGNAL(sessionClose(int)),this,SLOT(sessionCloseSLOT(int)));
+    connect(session,SIGNAL(sendDataToLog(QString)),this,SLOT(addRecordToLogSlot(QString)));
     session->setSocketDescriptor(socketID);
-    qDebug()<<socketID;
+    //qDebug()<<socketID;
     session->write(QByteArray(QString("200 SveT FTP Service\r\n").toUtf8()));
     sessionsList.insert(socketID,session);
 
@@ -32,4 +33,9 @@ void FTPServer::setServerAdress(QHostAddress _adress){
 
 void FTPServer::startServer(){
 
+}
+
+
+void FTPServer::addRecordToLogSlot(QString aData){
+    emit addRecordToLogSignal(aData.replace("\r\n",""));
 }

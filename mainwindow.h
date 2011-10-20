@@ -25,6 +25,8 @@ private slots:
     void addRecordInLog(QString aRecord);
     void runServerSlot();
     void stopServerSlot();
+
+    void clearLogSlot();
 };
 
 #endif // MAINWINDOW_H

@@ -26,7 +26,11 @@ private:
 
 public slots:
     void sessionCloseSLOT(int _descriptor);
+    void addRecordToLogSlot(QString aData);
 
+
+signals:
+    void addRecordToLogSignal(QString aData);
 };
 
 #endif // FTPSERVER_H
