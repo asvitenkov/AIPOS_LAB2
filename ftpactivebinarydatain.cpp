@@ -50,8 +50,8 @@ FTPActiveBinaryDataIn::~FTPActiveBinaryDataIn(){
 
 void FTPActiveBinaryDataIn::connectionCloseByClientSlot(){
     qDebug()<<"FTPActiveBinaryDataIn::connectionCloseByClientSlot()";
-    qDebug()<<"    "<<state();
-    disconnectFromHost();
+    //qDebug()<<"    "<<state();
+    //disconnectFromHost();
     if(!bytesAvailable()){
         // информации на запись нет, передача закончилась успешно
         qDebug()<<"    emit storeDataInFileCompleteSuccessfulSignal()";

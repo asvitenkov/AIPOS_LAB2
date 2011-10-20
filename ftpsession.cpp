@@ -14,6 +14,23 @@
 
 
 
+void inline getAbsolutePuth(QString aStr){
+
+}
+
+QString inline getArgument(QString aStr){
+    QString argument="";
+    int pos = aStr.indexOf(" ");
+
+
+    QString targetName;
+    for(int i=1;i<list.size();i++) targetName =targetName + " " + list[i];
+    return targetName.trimmed();
+}
+
+QString inline getCommand(QString aStr){
+
+}
 
 FTPSession::FTPSession(QObject *parent):QTcpSocket(parent)
 {
@@ -21,7 +38,7 @@ FTPSession::FTPSession(QObject *parent):QTcpSocket(parent)
     passIsOk = false;
     loginIsOk = false;
     isAnonymous = false;
-    type = "I";
+    type = "A";
     passiveMode = false;
     activMode = false;
     pasvPort.push_back(0);
@@ -29,10 +46,10 @@ FTPSession::FTPSession(QObject *parent):QTcpSocket(parent)
     setUserDir("D:/");
     currentDirectory.setFilter(QDir::Dirs | QDir::Files );
     renameIsActive = false;
-    activeTextOut = NULL;
-    activBinaryOut = NULL;
-    passiveTextOut = NULL;
-    passiveBinaryOut = NULL;
+//    activeTextOut = NULL;
+//    activBinaryOut = NULL;
+//    passiveTextOut = NULL;
+//    passiveBinaryOut = NULL;
 
     activeTextDataOut = NULL;
     activeBinaryDataOut = NULL;
@@ -146,7 +163,7 @@ void FTPSession::parsingQuery(QString query){
 
     if(list[0]=="TYPE"){
         cmdIsUnderstoot = true;
-        if(list[1]=="I"){
+        if(list[1]=="I" || list[1]=="A"){
             type = list[1];
             sendToClient("200 Type set to "+type);
         }
@@ -230,7 +247,7 @@ void FTPSession::parsingQuery(QString query){
                 listStr+=fileInfo.fileName();
                 listStr+="\r\n";
                 if(activMode)activeTextDataOut->sendTextData(listStr);
-                else passiveTextOut->sendTextData(listStr);
+                else ;
             }
             if(activMode){
                 activeTextDataOut->disconnectFromHost();
@@ -646,7 +663,8 @@ void FTPSession::parsingQuery(QString query){
                 connect(activeBinaryDataOut,SIGNAL(errorSendBinaryDataSignal()),this,SLOT(activeTransferBinaryDataErrorSlot()));
                 connect(activeBinaryDataOut,SIGNAL(connectionCloseByClientSignal()),this,SLOT(activeTransferBinaryDataConnectionCloseByClientSlot()));
                 connect(activeBinaryDataOut,SIGNAL(sendBinaryDataSuccessfulSignal()),this,SLOT(activeTransferBinaryDataSuccessfulSlot()));
-                activeBinaryDataOut->sendFile(file);
+                QDataStream *tmpStream = new QDataStream(file);
+                activeBinaryDataOut->sendFile(tmpStream);
             }
             else{
                 sendToClient("550 can't access file");

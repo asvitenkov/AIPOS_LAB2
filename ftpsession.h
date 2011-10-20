@@ -9,8 +9,8 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QFileInfoList>
-#include "ftpdataout.h"
-#include "ftpdatatransferchannel.h"
+//#include "ftpdataout.h"
+//#include "ftpdatatransferchannel.h"
 
 #include "ftpactivetextdataout.h"
 #include "ftpactivebinarydataout.h"
@@ -53,11 +53,11 @@ private:
     QString userDir;
     bool renameIsActive;
     QFileInfo renameObj;
-    FTPDataOut *activeTextOut;
-    FTPDataOut *activBinaryOut;
-    FTPDataTransferChannel *passiveTextOut;
-    FTPDataTransferChannel *passiveBinaryOut;
-    FTPDataTransferChannel *passiveTransfer;
+//    FTPDataOut *activeTextOut;
+//    FTPDataOut *activBinaryOut;
+//    FTPDataTransferChannel *passiveTextOut;
+//    FTPDataTransferChannel *passiveBinaryOut;
+//    FTPDataTransferChannel *passiveTransfer;
 
     FTPActiveTextDataOut *activeTextDataOut;
     FTPActiveBinaryDataOut *activeBinaryDataOut;

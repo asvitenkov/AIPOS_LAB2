@@ -4,6 +4,7 @@
 #include <QTcpSocket>
 #include <QHostAddress>
 #include <QFile>
+#include <QDataStream>
 
 class FTPActiveBinaryDataOut : public QTcpSocket
 {
@@ -13,7 +14,8 @@ class FTPActiveBinaryDataOut : public QTcpSocket
 
 public:
     explicit FTPActiveBinaryDataOut(QHostAddress aHostAdress,int aHostPort, QHostAddress aLocalAdress, int aLocalPort, QObject *parent=0);
-    void sendFile(QFile *aFile);
+    ~FTPActiveBinaryDataOut();
+    void sendFile(QDataStream *aStream);
 
 signals:
     void errorSendBinaryDataSignal();
@@ -26,7 +28,7 @@ private slots:
     void continueTransferBinaryDataSlot();
 
 private:
-    QFile *file;
+    QDataStream *outStream;
 
 };
 

@@ -7,33 +7,31 @@ FTPActiveBinaryDataOut::FTPActiveBinaryDataOut(QHostAddress aHostAdress, int aHo
     setLocalAddress(aLocalAdress);
     connect(this,SIGNAL(disconnected()),this,SLOT(connectionCloseByClientSlot()));
     connectToHost(aHostAdress,aHostPort,QIODevice::ReadWrite);
-    file = NULL;
+    outStream = NULL;
 }
 
-void FTPActiveBinaryDataOut::sendFile(QFile *aFile){
+void FTPActiveBinaryDataOut::sendFile(QDataStream *aStream){
     qDebug()<<"FTPActiveBinaryDataOut::sendFile";
-    if(aFile!=NULL){
-        file = aFile;
+    if(aStream!=NULL){
+        outStream = aStream;
         connect(this,SIGNAL(bytesWritten(qint64)),this,SLOT(continueTransferBinaryDataSlot()));
         continueTransferBinaryDataSlot();
     }
     else{
         // нулевая ссылка
         // послать ошибку
-        qDebug()<<"FTPActiveBinaryDataOut::sendFile emit errorSendBinaryDataSignal()";
+        qDebug()<<"FTPActiveBinaryDataOut::sendFile\n    emit errorSendBinaryDataSignal()";
         emit errorSendBinaryDataSignal();
         return;
     }
-    //connect(this,SIGNAL(bytesWritten(qint64)),this,SLOT(continueTransferBinaryDataSlot()));
-    //continueTransferBinaryDataSlot();
 }
 
 
 
 void FTPActiveBinaryDataOut::continueTransferBinaryDataSlot(){
     char buffer[blockSize];
-    if(!file->atEnd()){
-        qint64 sizeRead = file->read(buffer, blockSize);
+    if(!outStream->atEnd()){
+        qint64 sizeRead = outStream->readRawData(buffer, blockSize);
         if (sizeRead > 0)
         {
             qint64 sizeWrite = 0;
@@ -43,10 +41,9 @@ void FTPActiveBinaryDataOut::continueTransferBinaryDataSlot(){
 
                 if (size < 0){
                     // ошибка, сигнал об ошибке
-                    qDebug()<<"################";//<<file->errorString();
-                    qDebug()<<"FTPActiveBinaryDataOut::continueTransferBinaryDataSlot emit errorTransferBinaryData();";
-                    file->close();
-                    delete file;
+                    qDebug()<<"FTPActiveBinaryDataOut::continueTransferBinaryDataSlot\n    emit errorTransferBinaryData();";
+//                    outStream->device()->close();
+//                    outStream->device()->deleteLater();
                     emit errorSendBinaryDataSignal();
                     return;
                 }
@@ -55,20 +52,30 @@ void FTPActiveBinaryDataOut::continueTransferBinaryDataSlot(){
         }
     }
     else{
-        file->close();
-        file->deleteLater();
-        //delete file;
+//        outStream->device()->close();
+//        outStream->device()->deleteLater();
         disconnect(this,SIGNAL(bytesWritten(qint64)),this,SLOT(continueTransferBinaryDataSlot()));
-        qDebug()<<"FTPActiveBinaryDataOut::continueTransferBinaryDataSlot emit sendBinaryDataSuccessfulSignal()";
+        qDebug()<<"FTPActiveBinaryDataOut::continueTransferBinaryDataSlot\n    emit sendBinaryDataSuccessfulSignal()";
         emit sendBinaryDataSuccessfulSignal();
     }
 }
 
 
 void FTPActiveBinaryDataOut::connectionCloseByClientSlot(){
+    qDebug()<<"FTPActiveBinaryDataOut::connectionCloseByClientSlot";
     disconnect(this,SIGNAL(bytesWritten(qint64)),this,SLOT(continueTransferBinaryDataSlot()));
-    file->close();
-    file->deleteLater();
-    //delete file;
+//    outStream->device()->close();
+//    outStream->device()->deleteLater();
+    qDebug()<<"    emit connectionCloseByClientSignal()";
     emit connectionCloseByClientSignal();
+}
+
+
+
+FTPActiveBinaryDataOut::~FTPActiveBinaryDataOut(){
+    if(outStream!=NULL){
+        outStream->device()->close();
+        outStream->device()->deleteLater();
+        delete outStream;
+    }
 }

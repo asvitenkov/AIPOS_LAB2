@@ -12,7 +12,8 @@ SOURCES += main.cpp \
     ftpdatatransferchannel.cpp \
     ftpactivetextdataout.cpp \
     ftpactivebinarydataout.cpp \
-    ftpactivebinarydatain.cpp
+    ftpactivebinarydatain.cpp \
+    ftpactivetextdatain.cpp
 HEADERS += mainwindow.h \
     ftpserver.h \
     ftpsession.h \
@@ -20,8 +21,11 @@ HEADERS += mainwindow.h \
     ftpdatatransferchannel.h \
     ftpactivetextdataout.h \
     ftpactivebinarydataout.h \
-    ftpactivebinarydatain.h
+    ftpactivebinarydatain.h \
+    ftpactivetextdatain.h
 FORMS += mainwindow.ui
+
+
 
 
 
