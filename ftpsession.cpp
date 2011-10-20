@@ -66,16 +66,27 @@ FTPSession::FTPSession(QObject *parent):QTcpSocket(parent)
     activeTextDataOut = NULL;
     activeBinaryDataOut = NULL;
     activeBinaryDataIn = NULL;
-
-
 }
 
 
 void FTPSession::readClient(){
+
     QString query;
     QByteArray array;
     array = this->readAll();
+    QString logStr="Client: ";
+    if(loginIsOk){
+        logStr+=userName;
+        logStr+=" ";
+    }
+    else{
+        logStr+="unnamed ";
+    }
+
+
+    emit sendDataToLog("CLIENT:  "+QString::fromLocal8Bit(array));
     parsingQuery(QString::fromLocal8Bit(array));
+
 }
 
 
@@ -304,13 +315,13 @@ void FTPSession::parsingQuery(QString query){
         }
         if(dirName==".."){
             currentDirectory.cdUp();
-            sendToClient((QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName).replace("//","/"))));
+            sendToClient((QString("250 Command successful"))); //\"/%1\" is a current directory").arg(getUserWorkDir(userName).replace("//","/"))));
             return;
         }
         if(dirName=="/"){
             // переход к корню
             setUserDir(userDir);
-            sendToClient((QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName).replace("//","/"))));
+            sendToClient((QString("250 Command successful"))); //\"/%1\" is a current directory").arg(getUserWorkDir(userName).replace("//","/"))));
             return;
         }
 
@@ -322,7 +333,7 @@ void FTPSession::parsingQuery(QString query){
             if(tmpDir.isReadable()){
                 // переход возможен
                 currentDirectory=tmpDir;
-                sendToClient((QString("250 Command successful \"%1\" is a current directory").arg(getUserWorkDir(userName).replace("\\","/").replace("\\","/").replace("//","/").replace("//","/"))));
+                sendToClient((QString("250 Command successful")));// \"%1\" is a current directory").arg(getUserWorkDir(userName).replace("\\","/").replace("\\","/").replace("//","/").replace("//","/"))));
                 return;
             }
             else{
@@ -374,7 +385,7 @@ void FTPSession::parsingQuery(QString query){
     }
     if(cmd=="CDUP"){
         if(currentDirectory.absolutePath()!=userDir)currentDirectory.cdUp();
-        sendToClient((QString("250 Command successful \"/%1\" is a current directory").arg(getUserWorkDir(userName).replace("//","/").replace("//","/"))));
+        sendToClient((QString("250 Command successful \"%1\" is a current directory").arg(getUserWorkDir(userName).replace("\\","/").replace("//","/").replace("//","/"))));
         return;
     }
     if(cmd=="QUIT"){
@@ -425,7 +436,7 @@ void FTPSession::parsingQuery(QString query){
         }
         else{
             // директория не существует
-            sendToClient(QString("550 CWD failed \"%1\" directory not found").arg(dirName).replace("//","/"));
+            sendToClient(QString("550 CWD failed \"%1\" directory not found").arg(dirName).replace(userDir,"").replace("//","/"));
         }
         return;
     }
@@ -744,6 +755,7 @@ void FTPSession::sendToClient(QString data){
     qDebug()<<QTime::currentTime().toString("hh:mm:ss")+" Server: "<<data.replace("\r\n","");
     data+="\r\n";
     write(QByteArray(data.toLocal8Bit()));
+    emit sendDataToLog("SERVER: "+data.replace("\r\n",""));
 }
 
 

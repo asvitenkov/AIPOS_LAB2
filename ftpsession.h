@@ -64,6 +64,7 @@ private:
 
 signals:
     void sessionClose(int);
+    void sendDataToLog(QString aData);
 
 public slots:
     void activeTransferTextDataSuccessfulSlot();
@@ -81,6 +82,8 @@ public slots:
     void activeStoreBinaryDataConnectionCloseByClientSlot();
     void activeStoreBinaryDataErrorSlot();
     void activeStoreBinaryDataAbortSlot();
+
+
 };
 
 #endif // FTPSESSION_H
