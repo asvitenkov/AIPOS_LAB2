@@ -8,24 +8,54 @@ namespace Ui {
     class MainWindow;
 }
 
+/**
+ * @brief Class provide GUI interface for ftp server
+ *
+ */
 class MainWindow : public QMainWindow {
     Q_OBJECT
 public:
+/**
+ * @brief Create MainWindow object
+ *
+ * @param parent Parent widget
+ */
     MainWindow(QWidget *parent = 0);
+    /**
+     * @brief destroy MainWindow object
+     *
+     */
     ~MainWindow();
 
 protected:
 
 private:
-    Ui::MainWindow *ui;
+    Ui::MainWindow *ui; /**< TODO UI*/
 
-    FTPServer *server;
+    FTPServer *server; /**< TODO FTP server*/
 
 private slots:
+    /**
+     * @brief Add new record in log window
+     *
+     * @param aRecord message
+     */
     void addRecordInLog(QString aRecord);
+    /**
+     * @brief Run FTP server for listen 21 port
+     *
+     */
     void runServerSlot();
+    /**
+     * @brief Stop FTP server
+     *
+     */
     void stopServerSlot();
 
+    /**
+     * @brief Clean log window
+     *
+     */
     void clearLogSlot();
 };
 
