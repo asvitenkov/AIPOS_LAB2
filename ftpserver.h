@@ -54,20 +54,26 @@ public slots:
      * @param _descriptor Descriptor of the session socket
      */
     void sessionCloseSLOT(int _descriptor);
+<<<<<<< HEAD
     /**
      * @brief Slot for adding information for servers log file
      *
      * @param aData information for adding
      */
+=======
+>>>>>>> 446b87200f44303072fb3040ffcf4e0cd889aa72
     void addRecordToLogSlot(QString aData);
 
 
 signals:
+<<<<<<< HEAD
     /**
      * @brief This signal is emmited when new information for log avaliable
      *
      * @param aData log information
      */
+=======
+>>>>>>> 446b87200f44303072fb3040ffcf4e0cd889aa72
     void addRecordToLogSignal(QString aData);
 };
 

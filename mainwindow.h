@@ -52,10 +52,13 @@ private slots:
      */
     void stopServerSlot();
 
+<<<<<<< HEAD
     /**
      * @brief Clean log window
      *
      */
+=======
+>>>>>>> 446b87200f44303072fb3040ffcf4e0cd889aa72
     void clearLogSlot();
 };
 

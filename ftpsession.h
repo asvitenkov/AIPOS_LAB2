@@ -129,11 +129,14 @@ signals:
      * @param int Socket descriptor
      */
     void sessionClose(int);
+<<<<<<< HEAD
     /**
      * @brief Signal is emitted when necessary send information to log
      *
      * @param aData Text message
      */
+=======
+>>>>>>> 446b87200f44303072fb3040ffcf4e0cd889aa72
     void sendDataToLog(QString aData);
 
 public slots:
