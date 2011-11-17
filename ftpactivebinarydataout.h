@@ -7,61 +7,61 @@
 #include <QDataStream>
 
 /**
- * @brief The class gives transfer of the binary data under FTP protocol from the server to the client
+ * @brief Класс обеспечивает приём данных в активном режиме от сервера клиенту
  *
  */
 class FTPActiveBinaryDataOut : public QTcpSocket
 {
     Q_OBJECT
 
-    static const qint64 blockSize = 8192; /**< TODO  Size of transfer block*/
+    static const qint64 blockSize = 8192; /**< TODO  Размер передаваемого блока*/
 
 public:
     /**
-     * @brief Creates a FTPActiveBinaryDataOut object and attempts to make a connection to adress aHostAdress on port aHostPort
+     * @brief Конструктор класса. Создаёт объект класса и создаёт TCP подключения к aHostAdress на aHostPor
      *
-     * @param aHostAdress Peer address
-     * @param aHostPort Peer port
-     * @param aLocalAdress The address of a local socket
-     * @param aLocalPort The port of a local socet
-     * @param parent The parent object
+     * @param aHostAdress адрес клиента
+     * @param aHostPort порт клиента
+     * @param aLocalAdress локальный адрес сервера
+     * @param aLocalPort локальный порт сервера
+     * @param parent Родительский объект
      */
     explicit FTPActiveBinaryDataOut(QHostAddress aHostAdress,int aHostPort, QHostAddress aLocalAdress, int aLocalPort, QObject *parent=0);
     /**
-     * @brief Destroys the local socket, closing the connection if necessary
+     * @brief Деструктор класса. Закрывает все соединения, если они открыты
      *
      */
     ~FTPActiveBinaryDataOut();
     /**
-     * @brief Stream of reading of a sent file
+     * @brief Поток для чтения передаваемого файла
      *
-     * @param aStream file stream
+     * @param aStream поток
      */
     void sendFile(QDataStream *aStream);
     /**
-     * @brief Aborts the current connection and resets the socket
+     * @brief Прерывание соединения
      *
      */
     void abortConnection();
 
 signals:
     /**
-     * @brief This signal is emitted after an error occurred
+     * @brief Сигнал высылается после того, как произошла ошибка во время передачи файла
      *
      */
     void errorSendBinaryDataSignal();
     /**
-     * @brief This signal is emitted after the socket has been closed on the remote terminal
+     * @brief Сигнал высылается после обрыва соединения
      *
      */
     void connectionCloseByClientSignal();
     /**
-     * @brief This signal is emitted after the successful transfer
+     * @brief Сигнал высылается после успешной передачи файла клиенту
      *
      */
     void sendBinaryDataSuccessfulSignal();
     /**
-     * @brief This signal is emitted after abort() connection
+     * @brief Сигнал высылается после того, как соединение было успешно прервано
      *
      */
     void abortConnectionSignal();
@@ -69,23 +69,23 @@ signals:
 public slots:
 private slots:
     /**
-     * @brief Slot for processing a situation of aborting of connection
+     * @brief Слот для обработки прерывания клиентом соединения
      *
      */
     void connectionCloseByClientSlot();
     /**
-     * @brief Slot for continuation of data transmission after sending of the previous package
+     * @brief Слот для продолжения передачи файла после успешного отправления предыдущих данных
      *
      */
     void continueTransferBinaryDataSlot();
     /**
-     * @brief for continuation of data transmission after sending of the previous package
+     * @brief Слот для обрыва соединения
      *
      */
     void abortConnectionSlot();
 
 private:
-    QDataStream *outStream; /**< TODO  Stream for reading data */
+    QDataStream *outStream; /**< TODO  Поток для чтения передаваемых данных */
 
 };
 

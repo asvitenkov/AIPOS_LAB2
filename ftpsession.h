@@ -1,4 +1,4 @@
-#ifndef FTPSESSION_H
+﻿#ifndef FTPSESSION_H
 #define FTPSESSION_H
 
 #include <QTcpSocket>
@@ -17,7 +17,7 @@
 class FTPServer;
 
 /**
- * @brief The class is intended for management of session of client on FTP server
+ * @brief Класс является менеджером для клиентской сессии
  *
  */
 class FTPSession : public QTcpSocket
@@ -27,26 +27,26 @@ class FTPSession : public QTcpSocket
 
 public:
 /**
- * @brief Creates a FTPSession object
+ * @brief Конструктор класса
  *
- * @param parent The parent object
+ * @param parent Родительский объект
  */
     FTPSession(QObject *parent = 0);
     /**
-     * @brief Destroys the client session
+     * @brief Деструктор класса
      *
      */
     ~FTPSession();
     /**
-     * @brief Set current user work directory
+     * @brief Устанавливает текущую рабочую директорию пользователя
      *
-     * @param QString absolute file puth
+     * @param QString Абсолютный путь к директории
      */
     bool setCurrentDirectory(QString);
     /**
-     * @brief Set user work directory
+     * @brief Устанавливает начальную пользовательскую директорию
      *
-     * @param userDirName absolute file puth
+     * @param userDirName Абсолютный путь к директории
      */
     void setUserDir(QString userDirName);
 
@@ -54,152 +54,148 @@ public:
 
 private slots:
     /**
-     * @brief Slot for read incoming data
+     * @brief Слот для чтения данных клиента
      *
      */
     void readClient();
 
 private:
-    bool loginIsOk; /**< TODO */
-    bool passIsOk; /**< TODO */
-    bool isAnonymous; /**< TODO */
-    QString userName; /**< TODO */
-    QString userPassword; /**< TODO */
+    bool loginIsOk; /**< флаг корректности логина */
+    bool passIsOk; /**< флаг корректности пароля */
+    bool isAnonymous; /**< флаг анонимной сессии */
+    QString userName; /**< Имя пользователя */
+    QString userPassword; /**< Пароль пользователя */
     /**
-     * @brief Parse client query
+     * @brief Обработка запроса
      *
-     * @param QString Query
+     * @param QString запрос
      */
     void parsingQuery(QString);
     /**
-     * @brief Send text data to client
+     * @brief Отправка текстовой информации клиенту
      *
-     * @param QString text data
+     * @param QString текст
      */
     void sendToClient(QString);
     /**
-     * @brief Check user name
+     * @brief Проверка доступа логина
      *
-     * @param QString user name
+     * @param QString логин клиента
      */
     bool checkUserName(QString);
     /**
-     * @brief Check user password
+     * @brief Check проверка пароля
      *
-     * @param QString user password
+     * @param QString пароль
      */
     bool checkUserPassword(QString);
     /**
-     * @brief Chech permission create directory
+     * @brief проверка разрешения пользователю создавать директорию
      *
-     * @param QString user name
+     * @param QString имя пользователя
      */
     bool checkPermissionCreateDir(QString);
     /**
-     * @brief Return user work directory
+     * @brief Абсолютный путь текущей рабочей директории пользователя
      *
-     * @param QString user name
+     * @param QString директория
      */
     QString getUserWorkDir(QString);
     /**
-     * @brief Return absolute path of user work directory
+     * @brief возвращает строку абсолютного пути к директории
      *
-     * @param aDirName directory name
+     * @param aDirName имя директории
      */
     QString getAbsolutePuth(QString aDirName);
-    bool passiveMode; /**< TODO */
-    bool activMode; /**< TODO */
-    QString type; /**< TODO */
-    QList<int> pasvPort; /**< TODO */
-    QList<int> activPort; /**< TODO */
-    QDir currentDirectory; /**< TODO */
-    QString userDir; /**< TODO */
-    bool renameIsActive; /**< TODO */
-    QFileInfo renameObj; /**< TODO */
+    bool passiveMode; /**< Флаг пассивного режима */
+    bool activMode; /**< Фалг активного режима */
+    QString type; /**< тип передаваемых данных */
+    QList<int> pasvPort; /**< пассивный адрес и порт */
+    QList<int> activPort; /**< активный адрес и порт */
+    QDir currentDirectory; /**< текущая директория */
+    QString userDir; /**< начальная пользовательская директория */
+    bool renameIsActive; /**< флаг действия переименования */
+    QFileInfo renameObj; /**< переименовываемый объект */
 
-    FTPActiveTextDataOut *activeTextDataOut; /**< TODO */
-    FTPActiveBinaryDataOut *activeBinaryDataOut; /**< TODO */
-    FTPActiveBinaryDataIn *activeBinaryDataIn; /**< TODO */
+    FTPActiveTextDataOut *activeTextDataOut; /**< объект для передачи текстовой информации */
+    FTPActiveBinaryDataOut *activeBinaryDataOut; /**< объект для передачи бинарной инфорации */
+    FTPActiveBinaryDataIn *activeBinaryDataIn; /**< объект для приёма текстовой информации */
 
 
 signals:
     /**
-     * @brief Signal is emitted after close connection by client
+     * @brief Сигнал высылается после закрытия соеднения клиентом
      *
-     * @param int Socket descriptor
+     * @param int дескриптор соединения
      */
     void sessionClose(int);
-<<<<<<< HEAD
     /**
-     * @brief Signal is emitted when necessary send information to log
+     * @brief Сигнал высылается после необходимости добавить информацию в лог
      *
-     * @param aData Text message
+     * @param aData тестовое сообщение
      */
-=======
->>>>>>> 446b87200f44303072fb3040ffcf4e0cd889aa72
     void sendDataToLog(QString aData);
 
 public slots:
     /**
-     * @brief Slot caused after successful transfer text data
+     * @brief Слот для обработки успешной передачи текствой информации
      *
      */
     void activeTransferTextDataSuccessfulSlot();
     /**
-     * @brief Slot caused after error transfer text data
+     * @brief Слот для обработки ошибки во время передачи текстовой информации
      *
      */
     void activeTransferTextDataErrorSlot();
     /**
-     * @brief Slot caused after closed socket for text data transfer
+     * @brief Слот для обработки закрытия соединения передачи текстовой информации клиентом
      *
      */
     void activeTransferTextDataConnectionCloseByClientSlot();
     /**
-     * @brief Slot caused after abort socket for text data transfer
+     * @brief Слот для обработки обрыва соединения передачи текстовой информации
      *
      */
     void activeTransferTextDataAbortSlot();
 
     /**
-     * @brief Slot caused after successful transfer binary data
+     * @brief Слот для обработки успешной передачи бинарной информации
      *
      */
     void activeTransferBinaryDataSuccessfulSlot();
     /**
-     * @brief Slot caused after error transfer binary data
+     * @brief Слот вызывается после ошибки во время передачи бинарной информации
      *
      */
     void activeTransferBinaryDataErrorSlot();
     /**
-     * @brief Slot caused after closed socket for binary data transfer
+     * @brief Слот вызывается после закрытия соединения передачи бинарной информации клиентом
      *
      */
     void activeTransferBinaryDataConnectionCloseByClientSlot();
     /**
-     * @brief Slot caused after abort socket for binary data transfer
+     * @brief Слот вызывается после обрыва соединения передачи бинарной информации
      *
      */
     void activeTransferBinaryDataAbortSlot();
 
-    //void activeReceptionBinaryDataErrorOpenFileSlot();
     /**
-     * @brief Slot caused after successful storing binary data
+     * @brief Слот вызывается после успешного приёма бинарных данных
      *
      */
     void activeStoreBinaryDataCompleteSuccessfulSlot();
     /**
-     * @brief Slot caused after closed socket for binary data storing
+     * @brief Слот вызывается после закрытия клинтом соединения приёма бинарных данных
      *
      */
     void activeStoreBinaryDataConnectionCloseByClientSlot();
     /**
-     * @brief Slot caused after error storing binary data
+     * @brief Слот вызывается после возникновения ошибки во время приёма бинарных данных
      *
      */
     void activeStoreBinaryDataErrorSlot();
     /**
-     * @brief Slot caused after abort socket for binary data storing
+     * @brief Слот вызывается после обрыва соединения приёма бинарных данных
      *
      */
     void activeStoreBinaryDataAbortSlot();

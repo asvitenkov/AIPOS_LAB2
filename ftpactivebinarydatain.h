@@ -8,7 +8,7 @@
 #include <QByteArray>
 
 /**
- * @brief The class provides reception of the binary data under FTP protocol from the client to the server
+ * @brief Класс обеспечивает передачу бинарных данных в активном режиме от клиента серверу
  *
  */
 class FTPActiveBinaryDataIn : public QTcpSocket
@@ -16,48 +16,48 @@ class FTPActiveBinaryDataIn : public QTcpSocket
     Q_OBJECT
 public:
     /**
-     * @brief Creates a FTPActiveBinaryDataIn object in state UnconnectedState
+     * @brief Конструктор класса
      *
-     * @param aLocalAdress The address of a local socket
-     * @param aLocalPort The port of a local socet
-     * @param parent The parent object
+     * @param aLocalAdress адрес локального сокета
+     * @param aLocalPort порт локального сокета
+     * @param parent родительский объект
      */
     explicit FTPActiveBinaryDataIn(QHostAddress aLocalAdress, int aLocalPort,QObject *parent = 0);
     /**
-     * @brief Destroys the local socket, closing the connection if necessary
+     * @brief Деструктор класса
      *
      */
     ~FTPActiveBinaryDataIn();
     /**
-     * @brief Set a file in which it is necessary to write down the entering data
+     * @brief Устанавливает файл, в который необходимо сохранить принятые данные
      *
-     * @param aFile Output file
+     * @param aFile Файл
      */
     bool setSaveFile(QFile *aFile);
     /**
-     * @brief Aborts the current connection and resets the socket
+     * @brief Прерывание соединения
      *
      */
     void abortConnection();
 
 signals:
     /**
-     * @brief This signal is emitted after an error occurred
+     * @brief Сигнал высылается после того, как произошла ошибка во время сохранения файла
      *
      */
     void errorStoreDataInFileSignal();
     /**
-     * @brief This signal is emitted after the successful termination of data recording in a file
+     * @brief Сигнал высылается после успешного приёма и сохранения файла
      *
      */
     void storeDataInFileCompleteSuccessfulSignal();
     /**
-     * @brief This signal is emitted after the socket has been closed on the remote terminal
+     * @brief Сигнал высылается после обрыва соединения
      *
      */
     void connectionCloseByClientSignal();
     /**
-     * @brief This signal is emitted after performance abort() conenction
+     * @brief Сигнал высылается после того, как соединение было успешно прервано
      *
      */
     void abortCommandCompleteSignal();
@@ -65,24 +65,24 @@ public slots:
 
 private slots:
     /**
-     * @brief Slot for reading of the entering data
+     * @brief Слот для чтения входящих данных
      *
      */
     void readIncomingData();
     /**
-     * @brief Slot for processing a situation of closing of connection by the client
+     * @brief слот для обработки ситуации закрытия соединения клиентом
      *
      */
     void connectionCloseByClientSlot();
     /**
-     * @brief Slot for processing a situation of aborting of connection
+     * @brief слот для обработки ситуации обрыва соединения сервером
      *
      */
     void abortConnectionSlot();
 
 private:
-    QFile *file; /**< TODO Kept file */
-    QDataStream *writeStream; /**< TODO Stream for storing */
+    QFile *file; /**< TODO Сохраняемый файл */
+    QDataStream *writeStream; /**< TODO Поток для сохранения */
 };
 
 #endif // FTPACTIVEBINARYDATAIN_H

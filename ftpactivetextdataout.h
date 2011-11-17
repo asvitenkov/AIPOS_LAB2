@@ -5,7 +5,7 @@
 #include <QHostAddress>
 
 /**
- * @brief The class gives transfer of the text data under FTP protocol from the server to the client
+ * @brief Класс для передачи текстовой информации от сервера клиенту
  *
  */
 class FTPActiveTextDataOut : public QTcpSocket
@@ -13,42 +13,42 @@ class FTPActiveTextDataOut : public QTcpSocket
     Q_OBJECT
 public:
 /**
- * @brief Creates a FTPActiveTextDataOut object and attempts to make a connection to adress aHostAdress on port aHostPort
+ * @brief Конструктор класса. Создаёт TCP соединение к  aHostAdress на aHostPort
  *
- * @param aHostAdress Peer address
- * @param aHostPort Peer port
- * @param aLocalAdress The address of a local socket
- * @param aLocalPort The port of a local socet
- * @param parent The parent object
+ * @param aHostAdress Адрес клиента
+ * @param aHostPort Порт клиента
+ * @param aLocalAdress Адрес локального сокета
+ * @param aLocalPort порт локального сокета
+ * @param parent Родительский объект
  */
     FTPActiveTextDataOut(QHostAddress aHostAdress,int aHostPort, QHostAddress aLocalAdress, int aLocalPort, QObject *parent=0);
     /**
-     * @brief Sending text data aData
+     * @brief Передача текствой информации aData клиенту
      *
-     * @param aData Text data
+     * @param aData Текстовая информация
      */
     void sendTextData(QString aData);
 
 private slots:
     /**
-     * @brief Slot for processing a situation after closed connection
+     * @brief Слот для обработки закрытия соединения
      *
      */
     void connectionClosedSlot();
 
 signals:
     /**
-     * @brief This signal is emitted after an error occurred
+     * @brief Сигнал высылается после ошибки передачи данных
      *
      */
     void errorSendTexdDataSignal();
     /**
-     * @brief This signal is emitted after the socket has been closed on the remote terminal
+     * @brief Сигнал высылается после обрыва или закрытия соединения клиентом
      *
      */
     void connectionCloseByClientSignal();
     /**
-     * @brief This signal is emitted after the successful transfer
+     * @brief Сигнал высылается после успешной передачи информации
      *
      */
     void sendTextDataSuccessfulSignal();

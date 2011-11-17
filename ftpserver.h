@@ -6,7 +6,7 @@
 #include <QHash>
 
 /**
- * @brief The class provides a FTP TCP-based server
+ * @brief Класс FTP сервера
  *
  */
 class FTPServer : public QTcpServer
@@ -15,65 +15,57 @@ class FTPServer : public QTcpServer
     Q_OBJECT
 
 public:
-    //FTPServer(QHostAddress _serverAdress, int port,QObject *parent = 0 );
 /**
- * @brief Constructs a FTPServer object
+ * @brief Конструктор класса
  *
- * @param parent The parent object
+ * @param parent Родительский объект
  */
     FTPServer(QObject *parent = 0 );
-    //void sessionClose(int _descriptor);
     /**
-     * @brief Set the server address
+     * @brief Устанавливает локальный адрес сервера
      *
-     * @param _adress Server address
+     * @param _adress Адрес сервера
      */
     void setServerAdress(QHostAddress _adress);
     /**
-     * @brief Run FTP server for listening 21 port
+     * @brief Запускает сервер. Сервер прослушивает 21 порт
      *
      */
     void startServer();
 
 private:
     /**
-     * @brief Function is called by FTPServer when a new connection is available
+     * @brief Метод вызывается после появления нового подключения к серверу
      *
-     * @param socketID The native socket descriptor for the accepted connection
+     * @param socketID дескриптор соединения
      */
     void incomingConnection(int socketID);
-    QHostAddress serverAdress; /**< TODO  Server address*/
-    QHash< int, FTPSession *> sessionsList; /**< TODO List of connections*/
+    QHostAddress serverAdress; /**< TODO  Адрес сервера*/
+    QHash< int, FTPSession *> sessionsList; /**< TODO Список соединения сервера*/
 
 
 
 public slots:
     /**
-     * @brief Slot for frocessing closing session
+     * @brief Слот для обработки закрытия соединения клиентом
      *
-     * @param _descriptor Descriptor of the session socket
+     * @param дескриптор соединения
      */
     void sessionCloseSLOT(int _descriptor);
-<<<<<<< HEAD
     /**
-     * @brief Slot for adding information for servers log file
+     * @brief слот для добавления информации в лог
      *
-     * @param aData information for adding
+     * @param aData Информация для добавления
      */
-=======
->>>>>>> 446b87200f44303072fb3040ffcf4e0cd889aa72
     void addRecordToLogSlot(QString aData);
 
 
 signals:
-<<<<<<< HEAD
     /**
-     * @brief This signal is emmited when new information for log avaliable
+     * @brief Сигнал высылается для добавления информации в лог
      *
-     * @param aData log information
+     * @param aData Информация для добавления
      */
-=======
->>>>>>> 446b87200f44303072fb3040ffcf4e0cd889aa72
     void addRecordToLogSignal(QString aData);
 };
 
